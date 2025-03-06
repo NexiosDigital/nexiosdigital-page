@@ -3,12 +3,13 @@ version: '3.8'
 networks:
   proxy-swarm:
     external: true
+    name: NexiosNet  # Usando sua rede swarm existente
   internal:
     driver: overlay
 
 services:
   frontend:
-    image: ${COMPOSE_PROJECT_NAME}_frontend
+    image: nexiosdigital_frontend:latest
     volumes:
       - frontend_build:/app/build
     networks:
@@ -19,7 +20,7 @@ services:
         condition: on-failure
 
   backend:
-    image: ${COMPOSE_PROJECT_NAME}_backend
+    image: nexiosdigital_backend:latest
     environment:
       - MONGODB_URL=mongodb://mongo:27017
       - SECRET_KEY=${SECRET_KEY}
@@ -33,9 +34,9 @@ services:
         condition: on-failure
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-backend.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api`)"
-        - "traefik.http.services.${COMPOSE_PROJECT_NAME}-backend.loadbalancer.server.port=8000"
-        - "traefik.docker.network=proxy-swarm"
+        - "traefik.http.routers.nexiosdigital-backend.rule=Host(`nexiosdigital.com`) && PathPrefix(`/api`)"
+        - "traefik.http.services.nexiosdigital-backend.loadbalancer.server.port=8000"
+        - "traefik.docker.network=NexiosNet"
 
   mongo:
     image: mongo:latest
@@ -65,9 +66,9 @@ services:
         condition: on-failure
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${DOMAIN_NAME}`)"
-        - "traefik.http.services.${COMPOSE_PROJECT_NAME}-frontend.loadbalancer.server.port=80"
-        - "traefik.docker.network=proxy-swarm"
+        - "traefik.http.routers.nexiosdigital-frontend.rule=Host(`nexiosdigital.com`)"
+        - "traefik.http.services.nexiosdigital-frontend.loadbalancer.server.port=80"
+        - "traefik.docker.network=NexiosNet"
 
 volumes:
   mongo_data:
