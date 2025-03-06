@@ -3,7 +3,7 @@ version: '3.8'
 networks:
   proxy-swarm:
     external: true
-    name: NexiosNet  # Usando sua rede swarm existente
+    name: NexiosNet
   internal:
     driver: overlay
 
@@ -35,8 +35,10 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.nexiosdigital-backend.rule=Host(`nexiosdigital.com`) && PathPrefix(`/api`)"
-        - "traefik.http.services.nexiosdigital-backend.loadbalancer.server.port=8000"
-        - "traefik.docker.network=NexiosNet"
+        - "traefik.http.services.nexiosdigital-backend-svc.loadbalancer.server.port=8000"
+        # Ajustando para o modo Swarm
+        - "traefik.docker.lbswarm=true"
+        - "traefik.constraint-label=traefik-public"
 
   mongo:
     image: mongo:latest
@@ -67,9 +69,11 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.nexiosdigital-frontend.rule=Host(`nexiosdigital.com`)"
-        - "traefik.http.services.nexiosdigital-frontend.loadbalancer.server.port=80"
-        - "traefik.docker.network=NexiosNet"
+        - "traefik.http.services.nexiosdigital-frontend-svc.loadbalancer.server.port=80"
+        # Ajustando para o modo Swarm
+        - "traefik.docker.lbswarm=true"
+        - "traefik.constraint-label=traefik-public"
 
 volumes:
   mongo_data:
-  frontend_build:
+  frontend_build: 
