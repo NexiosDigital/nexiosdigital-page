@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.3'
 
 services:
   # Frontend - React (build de produção)
@@ -20,7 +20,6 @@ services:
       - MONGODB_URL=mongodb://mongo:27017
       - SECRET_KEY=${SECRET_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_ORG_ID=${OPENAI_ORG_ID}
     depends_on:
       - mongo
 
