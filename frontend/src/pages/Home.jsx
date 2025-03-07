@@ -450,36 +450,6 @@ const Home = () => {
 				</div>
 			</section>
 
-			{/* Clientes Section */}
-			<section className="section clients-section">
-				<div className="container">
-					<h2 className="section-title animate-on-scroll">
-						Empresas que Confiam em Nós
-					</h2>
-
-					<div className="clients-grid animate-on-scroll">
-						<div className="client-logo">
-							<div className="client-logo-placeholder">TechCorp</div>
-						</div>
-						<div className="client-logo">
-							<div className="client-logo-placeholder">InnovateSoft</div>
-						</div>
-						<div className="client-logo">
-							<div className="client-logo-placeholder">GlobalTech</div>
-						</div>
-						<div className="client-logo">
-							<div className="client-logo-placeholder">FutureSys</div>
-						</div>
-						<div className="client-logo">
-							<div className="client-logo-placeholder">SmartData</div>
-						</div>
-						<div className="client-logo">
-							<div className="client-logo-placeholder">AIVentures</div>
-						</div>
-					</div>
-				</div>
-			</section>
-
 			{/* Seção de Contato */}
 			<section id="contact" className="section contact-section">
 				<div className="container">
