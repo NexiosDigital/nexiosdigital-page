@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
+import ContactForm from "../components/ContactForm";
 import "../styles/Home.css";
 
 const Home = () => {
@@ -546,76 +547,8 @@ const Home = () => {
 							</div>
 						</div>
 
-						<div className="contact-form-container">
-							<div className="form-header">
-								<h3>Envie-nos uma mensagem</h3>
-								<p>
-									Preencha o formulário abaixo e entraremos em contato o mais
-									breve possível.
-								</p>
-							</div>
-
-							<form className="contact-form">
-								<div className="form-group">
-									<label htmlFor="name" className="form-label">
-										Nome
-									</label>
-									<input
-										type="text"
-										id="name"
-										name="name"
-										className="form-input"
-										placeholder="Seu nome completo"
-										required
-									/>
-								</div>
-
-								<div className="form-group">
-									<label htmlFor="email" className="form-label">
-										Email
-									</label>
-									<input
-										type="email"
-										id="email"
-										name="email"
-										className="form-input"
-										placeholder="seu.email@exemplo.com"
-										required
-									/>
-								</div>
-
-								<div className="form-group">
-									<label htmlFor="company" className="form-label">
-										Empresa
-									</label>
-									<input
-										type="text"
-										id="company"
-										name="company"
-										className="form-input"
-										placeholder="Nome da sua empresa"
-									/>
-								</div>
-
-								<div className="form-group">
-									<label htmlFor="message" className="form-label">
-										Mensagem
-									</label>
-									<textarea
-										id="message"
-										name="message"
-										className="form-input"
-										rows="5"
-										placeholder="Como podemos ajudar?"
-										required
-									></textarea>
-								</div>
-
-								<button type="submit" className="btn btn-primary full-width">
-									<i className="fas fa-paper-plane"></i> Enviar Mensagem
-								</button>
-							</form>
-						</div>
+						{/* Substituir o formulário existente pelo novo componente ContactForm */}
+						<ContactForm />
 					</div>
 				</div>
 			</section>
