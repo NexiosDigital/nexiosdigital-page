@@ -191,56 +191,6 @@ const About = () => {
 				</div>
 			</section>
 
-			<section className="section about-team bg-dark">
-				<div className="container">
-					<h2 className="section-title light">Nossa Equipe</h2>
-					<p className="section-subtitle light">
-						Contamos com uma equipe multidisciplinar de especialistas em
-						tecnologia, negócios e design, todos comprometidos em oferecer
-						soluções inovadoras e resultados excepcionais para nossos clientes.
-					</p>
-
-					<div className="team-grid">
-						<div className="team-member">
-							<div className="member-photo">
-								<div className="photo-placeholder">
-									<i className="fas fa-user"></i>
-								</div>
-							</div>
-							<h3>Ana Silva</h3>
-							<p>CEO & Fundadora</p>
-						</div>
-						<div className="team-member">
-							<div className="member-photo">
-								<div className="photo-placeholder">
-									<i className="fas fa-user"></i>
-								</div>
-							</div>
-							<h3>Carlos Mendes</h3>
-							<p>CTO</p>
-						</div>
-						<div className="team-member">
-							<div className="member-photo">
-								<div className="photo-placeholder">
-									<i className="fas fa-user"></i>
-								</div>
-							</div>
-							<h3>Mariana Santos</h3>
-							<p>Diretora de Inovação</p>
-						</div>
-						<div className="team-member">
-							<div className="member-photo">
-								<div className="photo-placeholder">
-									<i className="fas fa-user"></i>
-								</div>
-							</div>
-							<h3>Rafael Oliveira</h3>
-							<p>Diretor de Operações</p>
-						</div>
-					</div>
-				</div>
-			</section>
-
 			<section className="section about-cta">
 				<div className="container">
 					<div className="cta-content">

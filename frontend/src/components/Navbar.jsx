@@ -1,6 +1,5 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import logo from "../assets/logo-white.svg"; // Certifique-se de que o caminho está correto
 
 const Navbar = () => {
 	return (

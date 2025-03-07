@@ -31,12 +31,6 @@ const AIChat = () => {
 							</div>
 							<span className="progress-text">90% concluído</span>
 						</div>
-						<div className="notice-actions">
-							<a href="#contact" className="btn btn-secondary">
-								<i className="fas fa-bell"></i> Seja notificado quando estiver
-								disponível
-							</a>
-						</div>
 					</div>
 				</div>
 

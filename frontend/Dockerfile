@@ -9,7 +9,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 
 # Instalar dependências com definição de network timeout maior
-RUN npm config set network-timeout 300000 && \
+RUN npm config set fetch-timeout 300000 && \
   npm install
 
 # Copiar o resto dos arquivos

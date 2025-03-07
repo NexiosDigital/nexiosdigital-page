@@ -438,9 +438,9 @@ const Home = () => {
 							nível.
 						</p>
 						<div className="cta-buttons">
-							<Link to="/register" className="btn btn-primary">
+							<a href="https://wa.me/5522974033384" className="btn btn-primary">
 								<i className="fas fa-rocket"></i> Começar Agora
-							</Link>
+							</a>
 							<a href="#contact" className="btn btn-secondary">
 								<i className="fas fa-phone-alt"></i> Fale Conosco
 							</a>
@@ -477,6 +477,157 @@ const Home = () => {
 						</div>
 					</div>
 				</div>
+			</section>
+
+			{/* Seção de Contato */}
+			<section id="contact" className="section contact-section">
+				<div className="container">
+					<h2 className="section-title animate-on-scroll">Entre em Contato</h2>
+					<p className="section-subtitle animate-on-scroll">
+						Estamos prontos para ajudar a transformar seu negócio com nossas
+						soluções de IA
+					</p>
+
+					<div className="contact-container animate-on-scroll">
+						<div className="contact-info">
+							<div className="contact-card">
+								<div className="contact-card-header">
+									<div className="contact-icon">
+										<i className="fas fa-envelope"></i>
+									</div>
+									<h3>E-mail</h3>
+								</div>
+								<p>
+									Envie-nos uma mensagem para obter mais informações ou
+									solicitar uma demonstração.
+								</p>
+								<a
+									href="mailto:administracao@nexiosdigital.com"
+									className="contact-link"
+								>
+									administracao@nexiosdigital.com
+								</a>
+							</div>
+
+							<div className="contact-card">
+								<div className="contact-card-header">
+									<div className="contact-icon">
+										<i className="fab fa-whatsapp"></i>
+									</div>
+									<h3>WhatsApp</h3>
+								</div>
+								<p>
+									Entre em contato diretamente com nossa equipe para um
+									atendimento mais rápido.
+								</p>
+								<a
+									href="https://wa.me/5522974033384"
+									className="contact-link"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									(22) 97403-3384
+								</a>
+							</div>
+
+							<div className="contact-card">
+								<div className="contact-card-header">
+									<div className="contact-icon">
+										<i className="fas fa-map-marker-alt"></i>
+									</div>
+									<h3>Localização</h3>
+								</div>
+								<p>Estamos localizados em:</p>
+								<address className="contact-address">
+									Campos dos Goytacazes
+									<br />
+									Rio de Janeiro - Brasil
+								</address>
+							</div>
+						</div>
+
+						<div className="contact-form-container">
+							<div className="form-header">
+								<h3>Envie-nos uma mensagem</h3>
+								<p>
+									Preencha o formulário abaixo e entraremos em contato o mais
+									breve possível.
+								</p>
+							</div>
+
+							<form className="contact-form">
+								<div className="form-group">
+									<label htmlFor="name" className="form-label">
+										Nome
+									</label>
+									<input
+										type="text"
+										id="name"
+										name="name"
+										className="form-input"
+										placeholder="Seu nome completo"
+										required
+									/>
+								</div>
+
+								<div className="form-group">
+									<label htmlFor="email" className="form-label">
+										Email
+									</label>
+									<input
+										type="email"
+										id="email"
+										name="email"
+										className="form-input"
+										placeholder="seu.email@exemplo.com"
+										required
+									/>
+								</div>
+
+								<div className="form-group">
+									<label htmlFor="company" className="form-label">
+										Empresa
+									</label>
+									<input
+										type="text"
+										id="company"
+										name="company"
+										className="form-input"
+										placeholder="Nome da sua empresa"
+									/>
+								</div>
+
+								<div className="form-group">
+									<label htmlFor="message" className="form-label">
+										Mensagem
+									</label>
+									<textarea
+										id="message"
+										name="message"
+										className="form-input"
+										rows="5"
+										placeholder="Como podemos ajudar?"
+										required
+									></textarea>
+								</div>
+
+								<button type="submit" className="btn btn-primary full-width">
+									<i className="fas fa-paper-plane"></i> Enviar Mensagem
+								</button>
+							</form>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Clientes Section */}
+			<section className="section clients-section">
+				{/* ... código existente ... */}
+			</section>
+
+			{/* Contato Section - ADICIONE ESTA SEÇÃO */}
+			<section id="contact" className="section contact-section">
+				{/* ... código da seção de contato ... */}
 			</section>
 		</div>
 	);
