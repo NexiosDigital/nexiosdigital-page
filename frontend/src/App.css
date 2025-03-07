@@ -1484,3 +1484,38 @@ body {
 .card-title {
   margin-top: 15px;
 }
+
+/* Navbar Mobile Styles */
+
+/* Botão de menu mobile (toggle) - oculto no desktop */
+.menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  position: relative;
+  z-index: 1001;
+  width: 40px;
+  height: 40px;
+}
+
+/* Barras do ícone de hambúrguer */
+.menu-icon-bar {
+  display: block;
+  width: 25px;
+  height: 3px;
+  background-color: var(--primary);
+  margin: 5px 0;
+  transition: var(--transition-normal);
+  border-radius: 2px;
+}
+
+/* Container para links e ações de usuário */
+.navbar-menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+}
+

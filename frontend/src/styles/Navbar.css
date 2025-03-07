@@ -1,0 +1,327 @@
+/* Estilos modernos para Navbar */
+.navbar {
+  background-color: var(--navbar-bg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease-in-out;
+}
+
+.navbar.scrolled {
+  box-shadow: var(--shadow-md);
+  padding: 0.7rem 0;
+}
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative; /* Importante para o posicionamento absoluto do menu toggle */
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  transition: var(--transition-normal);
+}
+
+.logo:hover {
+  transform: scale(1.02);
+}
+
+.logo-text {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--primary);
+  position: relative;
+}
+
+.logo-text::after {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 2px;
+  background: var(--gradient-accent);
+  bottom: -4px;
+  left: 0;
+  transition: var(--transition-normal);
+}
+
+.logo:hover .logo-text::after {
+  width: 100%;
+}
+
+/* Parte central - Links para desktop */
+.navbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.navbar-links {
+  display: flex;
+  gap: 2.5rem;
+}
+
+.navbar-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--transition-normal);
+  position: relative;
+  padding: 0.5rem 0;
+  white-space: nowrap;
+}
+
+.navbar-links a:hover {
+  color: var(--primary);
+}
+
+.navbar-links a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background: var(--gradient-accent);
+  transition: width var(--transition-normal);
+}
+
+.navbar-links a:hover::after {
+  width: 100%;
+}
+
+/* Botão de contato */
+.contact-button {
+  margin-left: auto;
+}
+
+/* Botão de contato na navbar */
+.contact-button .btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Ícone de Menu Mobile - POSICIONAMENTO ABSOLUTO */
+.menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  width: 24px;
+  height: 18px;
+  position: absolute; /* Mudança para posicionamento absoluto */
+  right: 22px; /* Alinha à direita */
+  top: 50%; /* Centraliza verticalmente */
+  transform: translateY(-50%); /* Ajuste de centralização vertical */
+  cursor: pointer;
+  z-index: 2000;
+  padding: 0;
+  outline: none;
+}
+
+.menu-toggle span {
+  display: block;
+  position: absolute;
+  height: 1.5px;
+  width: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+  opacity: 1;
+  left: 0;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.menu-toggle span:nth-child(1) {
+  top: 0;
+  transform-origin: left center;
+}
+
+.menu-toggle span:nth-child(2) {
+  top: 8px;
+  transform-origin: left center;
+}
+
+.menu-toggle span:nth-child(3) {
+  top: 16px;
+  transform-origin: left center;
+}
+
+/* Animação elegante para o X */
+.menu-toggle.active span:nth-child(1) {
+  transform: rotate(45deg);
+  top: 0;
+  left: 3px;
+  width: 100%;
+}
+
+.menu-toggle.active span:nth-child(2) {
+  width: 0%;
+  opacity: 0;
+}
+
+.menu-toggle.active span:nth-child(3) {
+  transform: rotate(-45deg);
+  top: 16px;
+  left: 3px;
+  width: 100%;
+}
+
+/* Botão adicional para fechar o menu */
+.menu-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px; /* Posicionado no canto direito */
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 2001;
+  display: none;
+}
+
+.menu-close-btn span {
+  display: block;
+  position: absolute;
+  height: 2px;
+  width: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  opacity: 1;
+  left: 0;
+}
+
+.menu-close-btn span:nth-child(1) {
+  transform: rotate(45deg);
+}
+
+.menu-close-btn span:nth-child(2) {
+  transform: rotate(-45deg);
+}
+
+/* Menu fullscreen para mobile */
+.fullscreen-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(7, 7, 9, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1500;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s ease;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.fullscreen-menu.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.menu-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+}
+
+.mobile-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.mobile-links a {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  position: relative;
+  transition: transform 0.3s ease, color 0.3s ease;
+  text-align: center;
+  width: 100%;
+}
+
+.mobile-links a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gradient-accent);
+  transition: width 0.3s ease;
+}
+
+.mobile-links a:hover {
+  transform: translateY(-5px);
+  color: var(--accent);
+}
+
+.mobile-links a:hover::after {
+  width: 50%;
+}
+
+.mobile-actions {
+  margin-top: 1rem;
+}
+
+.btn-lg {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+}
+
+/* Regras específicas para mobile */
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: block;
+  }
+  
+  .navbar-container {
+    padding: 0 20px;
+  }
+  
+  .navbar-center {
+    display: none;
+  }
+  
+  /* Ocultar botão de contato na navbar em mobile */
+  .contact-button {
+    display: none;
+  }
+  
+  /* Quando o menu está ativo, mudar a cor do botão toggle */
+  .menu-toggle.active span {
+    background-color: var(--accent);
+  }
+  
+  /* Mostrar botão de fechamento no menu */
+  .menu-close-btn {
+    display: block;
+  }
+}
