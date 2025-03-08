@@ -522,16 +522,6 @@ const Home = () => {
 					</div>
 				</div>
 			</section>
-
-			{/* Clientes Section */}
-			<section className="section clients-section">
-				{/* ... código existente ... */}
-			</section>
-
-			{/* Contato Section - ADICIONE ESTA SEÇÃO */}
-			<section id="contact" className="section contact-section">
-				{/* ... código da seção de contato ... */}
-			</section>
 		</div>
 	);
 };
