@@ -77,6 +77,7 @@
 .about-values {
   position: relative;
   overflow: hidden;
+  padding: 4rem 0;
 }
 
 .bg-gradient {
@@ -190,48 +191,54 @@
   font-size: 1.1rem;
 }
 
-/* Expertise section */
+/* Expertise section - MODIFICADA PARA IGUALAR AOS VALORES */
+.about-expertise {
+  padding: 4rem 0;
+  position: relative;
+  overflow: hidden;
+}
+
 .expertise-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 2rem;
   margin-top: 3rem;
 }
 
 .expertise-item {
-  background-color: var(--card-bg);
+  background-color: rgba(255, 255, 255, 0.05);
   border-radius: var(--border-radius-lg);
   padding: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: var(--shadow-md);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .expertise-item:hover {
   transform: translateY(-10px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(255, 62, 108, 0.2);
+  border-color: rgba(255, 62, 108, 0.3);
 }
 
 .expertise-icon {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   background: var(--gradient-accent);
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin: 0 auto 1.5rem;
   box-shadow: 0 10px 20px rgba(255, 62, 108, 0.3);
 }
 
 .expertise-icon i {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   color: white;
 }
 
 .expertise-item h3 {
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   margin-bottom: 1rem;
   color: var(--primary);
 }
@@ -320,9 +327,21 @@
     flex-direction: column;
     gap: 2rem;
   }
+
+  .about-intro {
+    text-align: center;
+  }
   
-  .team-grid, .expertise-grid {
+  .team-grid {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  
+  .expertise-grid, .values-grid {
+    gap: 1.5rem;
+  }
+  
+  .about-values, .about-expertise {
+    padding: 4rem 0;
   }
 }
 
@@ -335,8 +354,36 @@
     font-size: 1.2rem;
   }
   
-  .value-card, .stat-item {
+  /* Uniformização das duas seções */
+  .expertise-item, .value-card {
     padding: 1.5rem;
+    text-align: center;
+  }
+  
+  .expertise-icon, .value-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 1rem;
+  }
+  
+  .expertise-icon i, .value-icon i {
+    font-size: 1.5rem;
+  }
+  
+  .expertise-item h3, .value-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .expertise-item p, .value-card p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  
+  .expertise-grid, .values-grid {
+    gap: 1rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
   }
   
   .impact-stats {
@@ -346,6 +393,24 @@
   .photo-placeholder {
     width: 150px;
     height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .expertise-item, .value-card {
+    padding: 1.25rem;
+  }
+  
+  .expertise-grid, .values-grid {
+    gap: 1.5rem;
+  }
+  
+  .about-values, .about-expertise {
+    padding: 3rem 0;
+  }
+  
+  .cta-content h2 {
+    font-size: 2.2rem;
   }
 }
 
@@ -359,4 +424,4 @@
 .animate-on-scroll.animate {
   opacity: 1;
   transform: translateY(0);
-} 
+}
