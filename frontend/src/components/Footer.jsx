@@ -27,7 +27,7 @@ const Footer = () => {
 								<Link to="/ai-chat">Assistente IA</Link>
 							</li>
 							<li>
-								<Link to="/register">Cadastre-se</Link>
+								<a href="#contact">Contato</a>
 							</li>
 						</ul>
 					</div>
@@ -36,7 +36,9 @@ const Footer = () => {
 						<h3>Serviços</h3>
 						<ul className="footer-links">
 							<li>
-								<Link to="/services/ai-agents">Agentes de IA</Link>
+								<Link to="/services/ai-customer-service">
+									Agentes de IA para Atendimento
+								</Link>
 							</li>
 							<li>
 								<Link to="/services/sales-automation">Automação de Vendas</Link>
@@ -47,7 +49,9 @@ const Footer = () => {
 								</Link>
 							</li>
 							<li>
-								<Link to="/services/consulting">Consultoria em IA</Link>
+								<Link to="/services/clickup-automation">
+									Automação com ClickUp
+								</Link>
 							</li>
 						</ul>
 					</div>
@@ -61,7 +65,7 @@ const Footer = () => {
 								</a>
 							</li>
 							<li>
-								<a href="tel:+551190000000">+55 22 97403-3384</a>
+								<a href="tel:+5522974033384">+55 22 97403-3384</a>
 							</li>
 							<li>Campos dos Goytacazes - RJ - Brasil</li>
 						</ul>

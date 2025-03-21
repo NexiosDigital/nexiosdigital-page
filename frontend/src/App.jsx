@@ -10,6 +10,14 @@ import About from "./pages/About";
 import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
 
+// Páginas de Serviço (importadas do arquivo de índice)
+import {
+	AICustomerService,
+	SalesAutomation,
+	ProcessAutomation,
+	ClickupAutomation,
+} from "./pages/services";
+
 function App() {
 	const [loading, setLoading] = useState(true);
 
@@ -39,6 +47,25 @@ function App() {
 						<Route path="/" element={<Home />} />
 						<Route path="/about" element={<About />} />
 						<Route path="/ai-chat" element={<AIChat />} />
+
+						{/* Rotas de Serviços */}
+						<Route
+							path="/services/ai-customer-service"
+							element={<AICustomerService />}
+						/>
+						<Route
+							path="/services/sales-automation"
+							element={<SalesAutomation />}
+						/>
+						<Route
+							path="/services/process-automation"
+							element={<ProcessAutomation />}
+						/>
+						<Route
+							path="/services/clickup-automation"
+							element={<ClickupAutomation />}
+						/>
+
 						<Route path="*" element={<NotFound />} />
 					</Routes>
 				</main>

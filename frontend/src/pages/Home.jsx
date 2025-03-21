@@ -100,64 +100,82 @@ const Home = () => {
 
 			{/* Serviços Section */}
 			<section className="section services-section">
-				<div class="services-section">
-					<div class="container">
-						<h2 class="section-title">Nossos Serviços</h2>
-						<p class="section-subtitle">
-							Combinamos tecnologia de ponta com expertise em negócios para
-							criar soluções que transformam empresas.
-						</p>
+				<div className="container">
+					<h2 className="section-title">Nossos Serviços</h2>
+					<p className="section-subtitle">
+						Combinamos tecnologia de ponta com expertise em negócios para criar
+						soluções que transformam empresas.
+					</p>
 
-						<div class="services-grid">
-							<div class="service-card card">
-								<div class="card-icon">
-									<i class="fas fa-robot"></i>
-								</div>
-								<div class="card-content">
-									<h3 class="card-title">Agentes de IA para Atendimento</h3>
-									<p>
-										Automatize o atendimento ao cliente com agentes de IA que
-										respondem perguntas frequentes, resolvem problemas comuns e
-										escalonam para humanos quando necessário.
-									</p>
-									<a href="/services/ai-agents" class="card-link">
-										Saiba mais <i class="fas fa-arrow-right"></i>
-									</a>
-								</div>
+					<div className="services-grid">
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-robot"></i>
 							</div>
-
-							<div class="service-card card">
-								<div class="card-icon">
-									<i class="fas fa-chart-line"></i>
-								</div>
-								<div class="card-content">
-									<h3 class="card-title">Automação de Vendas</h3>
-									<p>
-										Aumente a eficiência da sua equipe de vendas com ferramentas
-										de IA que qualificam leads, personalizam comunicações e
-										preveem o comportamento do cliente.
-									</p>
-									<a href="/services/sales-automation" class="card-link">
-										Saiba mais <i class="fas fa-arrow-right"></i>
-									</a>
-								</div>
+							<div className="card-content">
+								<h3 className="card-title">Agentes de IA para Atendimento</h3>
+								<p>
+									Automatize o atendimento ao cliente com agentes de IA que
+									respondem perguntas frequentes, resolvem problemas comuns e
+									escalonam para humanos quando necessário.
+								</p>
+								<Link to="/services/ai-customer-service" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
 							</div>
+						</div>
 
-							<div class="service-card card">
-								<div class="card-icon">
-									<i class="fas fa-cogs"></i>
-								</div>
-								<div class="card-content">
-									<h3 class="card-title">Automação de Processos</h3>
-									<p>
-										Elimine tarefas repetitivas e reduza erros humanos com
-										sistemas inteligentes que automatizam fluxos de trabalho em
-										toda a organização.
-									</p>
-									<a href="/services/process-automation" class="card-link">
-										Saiba mais <i class="fas fa-arrow-right"></i>
-									</a>
-								</div>
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-chart-line"></i>
+							</div>
+							<div className="card-content">
+								<h3 className="card-title">Automação de Vendas</h3>
+								<p>
+									Aumente a eficiência da sua equipe de vendas com ferramentas
+									de IA que qualificam leads, personalizam comunicações e
+									preveem o comportamento do cliente.
+								</p>
+								<Link to="/services/sales-automation" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
+							</div>
+						</div>
+
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-cogs"></i>
+							</div>
+							<div className="card-content">
+								<h3 className="card-title">Automação de Processos</h3>
+								<p>
+									Elimine tarefas repetitivas e reduza erros humanos com
+									sistemas inteligentes que automatizam fluxos de trabalho em
+									toda a organização.
+								</p>
+								<Link to="/services/process-automation" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
+							</div>
+						</div>
+
+						{/* Novo serviço de Automação com ClickUp */}
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-tasks"></i>
+							</div>
+							<div className="card-content">
+								<h3 className="card-title">
+									Automação de Processos Internos (com ClickUp)
+								</h3>
+								<p>
+									Potencialize seu ClickUp com automações personalizadas que
+									integram IA para otimizar seus fluxos de trabalho, aumentar a
+									produtividade e reduzir erros.
+								</p>
+								<Link to="/services/clickup-automation" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
 							</div>
 						</div>
 					</div>
