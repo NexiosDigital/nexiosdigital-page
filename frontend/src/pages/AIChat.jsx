@@ -37,10 +37,8 @@ const AIChat = () => {
 	// Conectar ao WebSocket quando o componente montar
 	useEffect(() => {
 		const clientId = getClientId();
-		const backendUrl =
-			process.env.REACT_APP_API_URL ||
-			window.location.origin.replace("3000", "8000");
-		const wsUrl = backendUrl.replace(/^http/, "ws");
+		const backendUrl = process.env.REACT_APP_API_URL || window.location.origin;
+		const wsUrl = backendUrl.replace(/^https?:\/\//, "wss://");
 		const wsConnection = new WebSocket(`${wsUrl}/ws/${clientId}`);
 
 		wsConnection.onopen = () => {
