@@ -429,12 +429,15 @@ body {
 
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2.5rem;
+  /* Definir exatamente 4 colunas para desktop */
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
   position: relative;
   z-index: 1;
   overflow: visible;
   padding-top: 20px;
+  margin: 0 auto;
+  max-width: 1400px; /* Aumentar largura máxima para acomodar 4 cards */
 }
 
 .service-card {
@@ -482,14 +485,14 @@ body {
 }
 
 .card-content {
-  padding: 1.5rem 2rem 2rem;
+  padding: 1.5rem 1.2rem 2rem;
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .card-title {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   margin-bottom: 1rem;
   color: var(--primary);
   font-weight: 600;
@@ -502,6 +505,7 @@ body {
   line-height: 1.7;
   margin-bottom: 1.5rem;
   text-align: center;
+  font-size: 0.95rem;
 }
 
 .card-link {
@@ -512,6 +516,9 @@ body {
   align-self: center;
   position: relative;
   transition: var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .card-link::after {
@@ -677,78 +684,22 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-@media (max-width: 992px) {
-  .contact-container {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 767px) {
-  /* Entre em contato - MODIFICADO PARA CENTRALIZAR */
-  .contact-container {
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
-  }
-  
-  .contact-info {
-    /* Alteração crítica: remover max-width para permitir largura total */
-    width: 100%;
-    /* Removido: max-width: 400px; */
-  }
-  
-  /* Usar grid em vez de column para igualar ao layout dos depoimentos */
-  .contact-info {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-  
-  .contact-card {
-    text-align: center;
-    padding: 2rem;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .contact-card-header {
-    flex-direction: column;
-    justify-content: center;
-    gap: 1rem;
-  }
-  
-  .contact-icon {
-    margin: 0 auto;
-  }
-  
-  .contact-card h3 {
-    margin-bottom: 0.5rem;
-  }
-  
-  .contact-card p {
-    margin: 1rem auto;
-    /* Removido o max-width para o texto para preencher toda a largura do card */
-    /* max-width: 300px; */
-  }
-  
-  .contact-link, .contact-address {
-    display: block;
-    text-align: center;
-  }
-  
-  .contact-form-container {
-    width: 100%;
-    /* Importante: remover restrição de largura para igualar à largura dos cards de depoimentos */
-    /* max-width: 400px; */
-  }
-}
-
 /* ========== CHAT/PREVIEW DA IA ========== */
 .ai-preview-section {
   background-color: var(--background-darker);
   position: relative;
+  padding: var(--section-padding);
+}
+
+.ai-preview-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(circle at 50% 30%, rgba(255, 62, 108, 0.1) 0%, transparent 70%);
+  z-index: 0;
 }
 
 .ai-preview-container {
@@ -765,7 +716,12 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   padding: 2rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .ai-preview-content h3 {
@@ -780,12 +736,36 @@ body {
   line-height: 1.8;
   margin-bottom: 2rem;
   font-size: 1.1rem;
+  max-width: 90%;
+}
+
+.ai-capabilities {
+  width: 100%;
+  max-width: 500px;
+  margin: 2rem auto;
+  text-align: left;
+}
+
+.ai-capabilities li {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+}
+
+.ai-capabilities li i {
+  color: var(--accent);
+  margin-top: 0.2rem;
 }
 
 .ai-preview-demo {
   flex: 1;
   min-height: 400px;
   position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .chat-preview, .chat-container {
@@ -1195,6 +1175,14 @@ body {
   }
 }
 
+/* Responsividade para tablets */
+@media (max-width: 1200px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 900px;
+  }
+}
+
 @media (max-width: 992px) {
   .hero h1 {
     font-size: 3rem;
@@ -1214,6 +1202,14 @@ body {
   
   .hero-stats {
     gap: 1.5rem;
+  }
+  
+  .ai-preview-content h3 {
+    font-size: 2rem;
+  }
+  
+  .ai-capabilities {
+    max-width: 450px;
   }
 }
 
@@ -1337,10 +1333,10 @@ body {
   
   /* Serviços */
   .services-grid {
-    display: flex;
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 60px;
     padding: 20px 15px;
+    max-width: 400px;
   }
   
   .service-card {
@@ -1380,6 +1376,7 @@ body {
   .step {
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
     padding: 2rem 1.5rem;
   }
@@ -1390,13 +1387,18 @@ body {
   
   .step-number {
     min-width: auto;
-    margin-bottom: 1rem;
-    font-size: 2.5rem;
-    color: var(--accent);
-    opacity: 0.7;
-    text-align: center;
-    width: 100%;
-    display: block;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+    font-size: 3rem;
+    background: var(--gradient-accent);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    box-shadow: 0 8px 20px rgba(255, 62, 108, 0.3);
   }
   
   .step-content {
@@ -1412,6 +1414,8 @@ body {
   .step-content p {
     font-size: 0.95rem;
     line-height: 1.6;
+    margin: 0 auto;
+    max-width: 90%;
   }
   
   /* Entre em contato - MODIFICADO PARA CENTRALIZAR */
@@ -1422,8 +1426,25 @@ body {
   }
   
   .contact-info {
+    /* Alteração crítica: remover max-width para permitir largura total */
     width: 100%;
-    max-width: 400px;
+    /* Removido: max-width: 400px; */
+  }
+  
+  /* Usar grid em vez de column para igualar ao layout dos depoimentos */
+  .contact-info {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .contact-card {
+    text-align: center;
+    padding: 2rem;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
   
   .contact-card-header {
@@ -1442,7 +1463,8 @@ body {
   
   .contact-card p {
     margin: 1rem auto;
-    max-width: 300px;
+    /* Removido o max-width para o texto para preencher toda a largura do card */
+    /* max-width: 300px; */
   }
   
   .contact-link, .contact-address {
@@ -1452,7 +1474,41 @@ body {
   
   .contact-form-container {
     width: 100%;
-    max-width: 400px;
+    /* Importante: remover restrição de largura para igualar à largura dos cards de depoimentos */
+    /* max-width: 400px; */
+  }
+  
+  /* IA Preview - MODIFICADO PARA MELHORAR VISUALIZAÇÃO MOBILE */
+  .ai-preview-section {
+    padding: var(--section-padding-mobile);
+  }
+  
+  .ai-preview-content {
+    padding: 1rem;
+  }
+  
+  .ai-preview-content h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1.2rem;
+  }
+  
+  .ai-preview-content p {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1.8rem;
+  }
+  
+  .ai-capabilities {
+    padding-left: 1rem;
+    max-width: 90%;
+  }
+  
+  .ai-capabilities li {
+    margin-bottom: 0.8rem;
+  }
+  
+  .ai-preview-demo {
+    min-height: 350px;
   }
   
   /* Chat */
@@ -1582,7 +1638,7 @@ body {
   }
 }
 
-@media (max-width: 359px) {
+@media (max-width: 480px) {
   .container {
     padding: 0 1rem;
   }
@@ -1607,6 +1663,16 @@ body {
   
   .footer {
     padding: 3.5rem 0.8rem 1.5rem;
+  }
+  
+  .step-number {
+    width: 100px;
+    height: 100px;
+    font-size: 2.5rem;
+  }
+  
+  .step {
+    padding: 1.5rem 1rem;
   }
 }
 

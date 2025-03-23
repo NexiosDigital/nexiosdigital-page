@@ -35,6 +35,11 @@
   transform: scale(1.02);
 }
 
+.logo img {
+  height: 42px;
+  margin-right: 12px;
+}
+
 .logo-text {
   font-family: var(--font-heading);
   font-size: 1.8rem;
@@ -69,6 +74,7 @@
 .navbar-links {
   display: flex;
   gap: 2.5rem;
+  align-items: center; /* Garante alinhamento vertical consistente */
 }
 
 .navbar-links a {
@@ -78,7 +84,8 @@
   transition: var(--transition-normal);
   position: relative;
   padding: 0.5rem 0;
-  white-space: nowrap;
+  display: flex; /* Adicionado para alinhar melhor com o dropdown */
+  align-items: center;
 }
 
 .navbar-links a:hover {
@@ -103,7 +110,9 @@
 /* Dropdown Menu */
 .dropdown-container {
   position: relative;
-  display: inline-block;
+  display: inline-flex; /* Alterado para inline-flex para melhor alinhamento */
+  align-items: center; /* Centraliza o conteúdo verticalmente */
+  height: 100%; /* Garante mesma altura dos outros itens */
 }
 
 .dropdown-trigger {
@@ -119,6 +128,7 @@
   font-size: 1rem;
   padding: 0.5rem 0;
   position: relative;
+  font-family: var(--font-main); /* Mesma fonte dos outros links */
 }
 
 .dropdown-trigger:hover {
@@ -142,7 +152,9 @@
 
 .dropdown-trigger i {
   font-size: 0.7rem;
-  margin-left: 0.3rem;
+  line-height: 1; /* Corrige linha-base */
+  position: relative;
+  top: 0; /* Ajusta posição vertical do ícone */
 }
 
 .dropdown-menu {
@@ -412,6 +424,7 @@
   text-align: center;
   width: 100%;
   justify-content: center;
+  font-family: var(--font-main);
 }
 
 .mobile-dropdown-trigger:hover {
@@ -422,6 +435,9 @@
 .mobile-dropdown-trigger i {
   font-size: 1.2rem;
   margin-left: 0.5rem;
+  position: relative;
+  top: 0;
+  line-height: 1;
 }
 
 .mobile-dropdown-content {
@@ -480,5 +496,10 @@
   /* Mostrar botão de fechamento no menu */
   .menu-close-btn {
     display: block;
+  }
+  
+  .dropdown-container {
+    width: 100%;
+    text-align: center;
   }
 }
