@@ -15,6 +15,7 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - WDS_SOCKET_PORT=0
+      - REACT_APP_API_URL=http://localhost:8000
     networks:
       - nexios-network
     depends_on:
@@ -33,10 +34,13 @@ services:
       - MONGODB_URL=mongodb://mongo:27017
       - SECRET_KEY=${SECRET_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
     networks:
       - nexios-network
     depends_on:
       - mongo
+
+  # N8N já está configurado externamente em https://webhook.nexiosdigital.com
 
   # MongoDB
   mongo:

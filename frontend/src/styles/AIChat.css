@@ -335,3 +335,473 @@
     transform: translateY(0);
   }
 }
+
+/* Estilos adicionais para o aviso de implementação no AIChat */
+
+/* Aviso de implementação */
+.implementation-notice {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-lg);
+  padding: 3rem;
+  margin: 2rem 0 4rem;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.implementation-notice::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-image: 
+    radial-gradient(circle at 10% 10%, rgba(255, 62, 108, 0.1) 0%, transparent 30%),
+    radial-gradient(circle at 90% 90%, rgba(255, 62, 108, 0.1) 0%, transparent 30%);
+  z-index: 0;
+}
+
+.notice-icon {
+  flex: 0 0 120px;
+  height: 120px;
+  background: var(--gradient-accent);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.feature-icon i {
+  font-size: 1.3rem;
+  color: white;
+}
+
+.feature-content {
+  flex: 1;
+}
+
+.feature-content h4 {
+  font-size: 1.3rem;
+  margin-bottom: 0.8rem;
+  color: var(--primary);
+}
+
+.feature-content p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Example chats */
+.ai-examples {
+  margin-bottom: 5rem;
+}
+
+.ai-examples h3 {
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  color: var(--primary);
+  text-align: center;
+}
+
+.examples-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.example-chat {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-md);
+}
+
+.example-message {
+  padding: 1.2rem;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 1.5rem;
+  max-width: 85%;
+}
+
+.example-message:last-child {
+  margin-bottom: 0;
+}
+
+.example-message.message-user {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: white;
+  align-self: flex-end;
+  border-radius: var(--border-radius-md) 0 var(--border-radius-md) var(--border-radius-md);
+  margin-left: auto;
+}
+
+.example-message.message-ai {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  align-self: flex-start;
+  border-radius: 0 var(--border-radius-md) var(--border-radius-md) var(--border-radius-md);
+}
+
+/* Animations */
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+  .implementation-notice {
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+  
+  .notice-icon {
+    margin: 0 auto;
+  }
+  
+  .notice-content h2 {
+    text-align: center;
+  }
+  
+  .notice-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .feature-item {
+    padding: 1.5rem;
+  }
+  
+  .example-message {
+    max-width: 100%;
+  }
+}  
+
+/* Adicionando estilos complementares ao AIChat.css existente */
+
+.chat-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  width: 100%;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--accent);
+  animation: spin 1s ease-in-out infinite;
+}
+
+.chat-footer {
+  margin-top: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* Estilo para mensagens vazias */
+.chat-container:empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.chat-container:empty::after {
+  content: "Nenhuma mensagem disponível";
+  color: var(--text-secondary);
+}
+
+/* Botão desabilitado */
+.chat-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Garantir que a altura do chat seja adequada em telas menores */
+@media (max-width: 768px) {
+  .chat-container {
+    min-height: 400px;
+  }
+  
+  .chat-messages {
+    max-height: 350px;
+  }
+  
+  .chat-actions {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+}
+
+/* Animação para mensagens entrando */
+.message {
+  animation: messageSlideIn 0.3s ease-out forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes messageSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para o modo de processamento (N8N ou OpenAI) */
+.chat-mode-selector {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.mode-toggle {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-md);
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  transition: var(--transition-normal);
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-secondary);
+  border-radius: 50%;
+  transition: var(--transition-normal);
+}
+
+.toggle-input:checked + .toggle-slider {
+  background-color: var(--accent);
+}
+
+.toggle-input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+  background-color: white;
+}
+
+.toggle-text {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  transition: var(--transition-normal);
+}
+
+.toggle-input:checked ~ .toggle-text {
+  color: var(--accent);
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(255, 62, 108, 0.4);
+  z-index: 1;
+}
+
+.notice-icon i {
+  font-size: 3rem;
+  color: white;
+}
+
+.notice-content {
+  flex: 1;
+  z-index: 1;
+}
+
+.notice-content h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: var(--primary);
+}
+
+.notice-content p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.implementation-progress {
+  margin-bottom: 2rem;
+}
+
+.progress-bar {
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 90%;
+  background: var(--gradient-accent);
+  animation: pulse 2s infinite;
+}
+
+.progress-text {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.notice-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Features grid */
+.coming-soon-features {
+  margin-bottom: 4rem;
+}
+
+.coming-soon-features h3 {
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  color: var(--primary);
+  text-align: center;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.feature-item {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  gap: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-item:hover {
+  transform: translateY(-10px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(255, 62, 108, 0.2);
+}
+
+.feature-icon {
+  flex: 0 0 50px;
+  height: 50px;
+  background: var(--gradient-accent);
+  border-radius: 50%;
+  display: flex;
+}
+
+/* WebSocket Status Indicator */
+.websocket-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  margin-left: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.websocket-status i {
+  margin-right: 0.4rem;
+}
+
+.websocket-status.connected {
+  background-color: rgba(12, 214, 138, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(12, 214, 138, 0.3);
+}
+
+.websocket-status.disconnected {
+  background-color: rgba(255, 206, 49, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(255, 206, 49, 0.3);
+}
+
+.websocket-status.error {
+  background-color: rgba(255, 77, 106, 0.15);
+  color: var(--error);
+  border: 1px solid rgba(255, 77, 106, 0.3);
+}
+
+/* Ajustes no cabeçalho para incluir o indicador de status */
+.chat-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+/* Posicionar o indicador de status no mobile */
+@media (max-width: 768px) {
+  .websocket-status {
+    margin: 0.8rem 0 0;
+  }
+}
+
+/* Animação de pulse para o indicador quando conectado */
+@keyframes pulse-connected {
+  0% { box-shadow: 0 0 0 0 rgba(12, 214, 138, 0.3); }
+  70% { box-shadow: 0 0 0 5px rgba(12, 214, 138, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(12, 214, 138, 0); }
+}
+
+.websocket-status.connected i {
+  animation: pulse-connected 2s infinite;
+}

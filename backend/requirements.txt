@@ -13,3 +13,7 @@ PyJWT==2.8.0
 langchain==0.0.314
 openai
 python-dotenv==1.0.0
+# Pacote para requisições HTTP assíncronas (integração N8N)
+httpx==0.24.1
+# Para WebSockets
+websockets==11.0.3

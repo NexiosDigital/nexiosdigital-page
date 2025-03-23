@@ -1,66 +1,101 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import chatService from "../services/chatService";
+import axios from "axios";
 import "../styles/AIChat.css";
 
 const AIChat = () => {
 	// Estados
-	const [messages, setMessages] = useState([]);
+	const [messages, setMessages] = useState([
+		{
+			role: "assistant",
+			content:
+				"Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje?",
+		},
+	]);
 	const [input, setInput] = useState("");
 	const [isTyping, setIsTyping] = useState(false);
+	const [useN8n, setUseN8n] = useState(true); // Definido como true por padrão para usar N8N
 	const [conversationId, setConversationId] = useState(null);
-	const [apiStatus, setApiStatus] = useState({
-		checked: false,
-		online: false,
-		message: "",
-	});
+	const [lastSentMessage, setLastSentMessage] = useState("");
+	const [socket, setSocket] = useState(null);
+	const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
 	// Referências
 	const messagesEndRef = useRef(null);
 	const chatInputRef = useRef(null);
 
-	// Efeito inicial para verificar status da API e inicializar chat
+	// Geração de ID de cliente para WebSocket
+	const getClientId = () => {
+		let clientId = localStorage.getItem("nexios_client_id");
+		if (!clientId) {
+			clientId = `client_${Math.random().toString(36).substring(2, 15)}`;
+			localStorage.setItem("nexios_client_id", clientId);
+		}
+		return clientId;
+	};
+
+	// Conectar ao WebSocket quando o componente montar
 	useEffect(() => {
-		const initializeChat = async () => {
-			try {
-				const status = await chatService.checkStatus();
+		const clientId = getClientId();
+		const backendUrl =
+			process.env.REACT_APP_API_URL ||
+			window.location.origin.replace("3000", "8000");
+		const wsUrl = backendUrl.replace(/^http/, "ws");
+		const wsConnection = new WebSocket(`${wsUrl}/ws/${clientId}`);
 
-				if (
-					status.server === "online" &&
-					status.openai_connection === "successful"
-				) {
-					setApiStatus({
-						checked: true,
-						online: true,
-						message: "API conectada com sucesso",
-					});
+		wsConnection.onopen = () => {
+			console.log("WebSocket conectado!");
+			setConnectionStatus("connected");
+			setSocket(wsConnection);
+		};
 
-					// Inicializar mensagem de boas-vindas
-					setMessages([
-						{
-							role: "assistant",
-							content:
-								"Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje?",
-						},
-					]);
-				} else {
-					setApiStatus({
-						checked: true,
-						online: false,
-						message: "API indisponível no momento",
-					});
+		wsConnection.onmessage = (event) => {
+			const data = JSON.parse(event.data);
+			console.log("Mensagem WebSocket recebida:", data);
+
+			// Verificar se é uma resposta de assistente
+			if (data.type === "assistant_response") {
+				// Se tiver conversation_id, verificar se corresponde à conversa atual
+				if (data.conversation_id && data.conversation_id === conversationId) {
+					const assistantMessage = {
+						role: "assistant",
+						content: data.content,
+					};
+					setMessages((prev) => [...prev, assistantMessage]);
+					setIsTyping(false);
 				}
-			} catch (error) {
-				setApiStatus({
-					checked: true,
-					online: false,
-					message: "Não foi possível conectar à API",
-				});
+				// Se não tiver conversation_id ou se for uma transmissão geral
+				else if (!data.conversation_id || data.type === "broadcast_message") {
+					// Verificar se é uma resposta para a última mensagem enviada
+					if (data.original_message === lastSentMessage) {
+						const assistantMessage = {
+							role: "assistant",
+							content: data.content,
+						};
+						setMessages((prev) => [...prev, assistantMessage]);
+						setIsTyping(false);
+					}
+				}
 			}
 		};
 
-		initializeChat();
-	}, []);
+		wsConnection.onclose = () => {
+			console.log("WebSocket desconectado");
+			setConnectionStatus("disconnected");
+		};
+
+		wsConnection.onerror = (error) => {
+			console.error("Erro no WebSocket:", error);
+			setConnectionStatus("error");
+		};
+
+		// Limpar conexão quando o componente desmontar
+		return () => {
+			if (wsConnection) {
+				wsConnection.close();
+			}
+		};
+	}, [conversationId]);
 
 	// Efeito para rolar para a última mensagem
 	useEffect(() => {
@@ -72,6 +107,32 @@ const AIChat = () => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	};
 
+	// Enviar mensagem para o backend
+	const sendMessage = async (messageText, msgConversationHistory) => {
+		const backendUrl =
+			process.env.REACT_APP_API_URL ||
+			window.location.origin.replace("3000", "8000");
+		const endpoint = useN8n ? "/api/chat-n8n" : "/api/chat";
+
+		try {
+			const response = await axios.post(`${backendUrl}${endpoint}`, {
+				message: messageText,
+				conversation_history: msgConversationHistory,
+				conversation_id: conversationId,
+			});
+
+			// Se houver um ID de conversa na resposta, armazene-o
+			if (response.data.conversation_id) {
+				setConversationId(response.data.conversation_id);
+			}
+
+			return response.data;
+		} catch (error) {
+			console.error(`Erro ao enviar mensagem para ${endpoint}:`, error);
+			throw error;
+		}
+	};
+
 	// Manipulador para envio de mensagens
 	const handleSendMessage = async () => {
 		if (input.trim() === "" || isTyping) return;
@@ -81,8 +142,12 @@ const AIChat = () => {
 			content: input,
 		};
 
+		// Armazenar a mensagem que está sendo enviada
+		setLastSentMessage(input);
+
 		// Atualizar UI com a mensagem do usuário
 		setMessages((prev) => [...prev, userMessage]);
+		const currentInput = input;
 		setInput("");
 		setIsTyping(true);
 
@@ -96,31 +161,22 @@ const AIChat = () => {
 				content: msg.content,
 			}));
 
-			// Enviar mensagem para API avançada se tiver ID da conversa
-			let response;
-			if (conversationId) {
-				response = await chatService.sendAdvancedMessage(
-					input,
-					conversationId,
-					conversationHistory
-				);
+			// Enviar a mensagem para o backend
+			const response = await sendMessage(currentInput, conversationHistory);
 
-				// Atualizar ID da conversa se fornecido na resposta
-				if (response.conversation_id) {
-					setConversationId(response.conversation_id);
-				}
-			} else {
-				// Usar API simples para primeira interação
-				response = await chatService.sendMessage(input, conversationHistory);
+			// Se estamos usando WebSockets, a resposta virá pelo WebSocket
+			// Mas se o WebSocket falhar, ainda podemos mostrar a resposta da API REST
+			if (connectionStatus !== "connected") {
+				console.log("WebSocket não conectado, usando resposta HTTP:", response);
+				const assistantMessage = {
+					role: "assistant",
+					content: response.response,
+				};
+				setMessages((prev) => [...prev, assistantMessage]);
+				setIsTyping(false);
 			}
-
-			// Adicionar resposta ao chat
-			const assistantMessage = {
-				role: "assistant",
-				content: response.response,
-			};
-
-			setMessages((prev) => [...prev, assistantMessage]);
+			// Caso contrário, aguardamos a resposta via WebSocket
+			// A resposta será processada no evento onmessage do WebSocket
 		} catch (error) {
 			console.error("Erro ao processar mensagem:", error);
 
@@ -128,11 +184,10 @@ const AIChat = () => {
 			const errorMessage = {
 				role: "assistant",
 				content:
-					"Desculpe, tive um problema ao processar sua mensagem. Por favor, tente novamente.",
+					"Desculpe, tive um problema ao processar sua mensagem. Por favor, tente novamente mais tarde ou entre em contato com nosso suporte.",
 			};
 
 			setMessages((prev) => [...prev, errorMessage]);
-		} finally {
 			setIsTyping(false);
 		}
 	};
@@ -145,65 +200,7 @@ const AIChat = () => {
 		}
 	};
 
-	// Renderização condicional com base no status da API
-	if (!apiStatus.checked) {
-		return (
-			<div className="ai-chat-page">
-				<div className="container">
-					<div className="chat-header">
-						<h1>Assistente Nexios Digital</h1>
-						<p>Verificando conexão com o sistema...</p>
-					</div>
-					<div className="chat-loading">
-						<div className="loading-spinner"></div>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	if (!apiStatus.online) {
-		return (
-			<div className="ai-chat-page">
-				<div className="container">
-					<div className="chat-header">
-						<h1>Assistente Nexios Digital</h1>
-						<p>
-							Interaja com nossa IA e descubra como podemos ajudar a transformar
-							seu negócio.
-						</p>
-					</div>
-
-					<div className="implementation-notice">
-						<div className="notice-icon">
-							<i className="fas fa-exclamation-triangle"></i>
-						</div>
-						<div className="notice-content">
-							<h2>Sistema temporariamente indisponível</h2>
-							<p>
-								Nosso assistente de IA está passando por manutenção no momento.
-								Por favor, tente novamente mais tarde ou entre em contato
-								conosco diretamente pelo WhatsApp para obter assistência
-								imediata.
-							</p>
-							<div className="notice-actions">
-								<a
-									href="https://wa.me/5522974033384"
-									className="btn btn-primary"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									<i className="fab fa-whatsapp"></i> Contato via WhatsApp
-								</a>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	// Renderização do chat quando a API está online
+	// Renderização do chat
 	return (
 		<div className="ai-chat-page">
 			<div className="container">
@@ -213,6 +210,40 @@ const AIChat = () => {
 						Interaja com nossa IA e descubra como podemos ajudar a transformar
 						seu negócio.
 					</p>
+					{/* Indicador de status do WebSocket */}
+					<div className={`websocket-status ${connectionStatus}`}>
+						{connectionStatus === "connected" ? (
+							<>
+								<i className="fas fa-check-circle"></i> Conectado
+							</>
+						) : connectionStatus === "error" ? (
+							<>
+								<i className="fas fa-exclamation-circle"></i> Erro de conexão
+							</>
+						) : (
+							<>
+								<i className="fas fa-circle"></i> Desconectado
+							</>
+						)}
+					</div>
+				</div>
+
+				{/* Seletor de modo de processamento */}
+				<div className="chat-mode-selector">
+					<div className="mode-toggle">
+						<label className="toggle-label">
+							<input
+								type="checkbox"
+								checked={useN8n}
+								onChange={() => setUseN8n(!useN8n)}
+								className="toggle-input"
+							/>
+							<span className="toggle-slider"></span>
+							<span className="toggle-text">
+								{useN8n ? "Usando Fluxo N8N" : "Usando OpenAI Direto"}
+							</span>
+						</label>
+					</div>
 				</div>
 
 				<div className="chat-container">
@@ -257,22 +288,22 @@ const AIChat = () => {
 				<div className="chat-footer">
 					<p>
 						Este assistente virtual utiliza IA para fornecer informações sobre
-						nossos serviços. Para informações mais detalhadas ou personalizadas,
-						entre em contato com nossa equipe.
+						nossos serviços.{" "}
+						{useN8n
+							? "Atualmente usando fluxo N8N personalizado."
+							: "Atualmente usando OpenAI diretamente."}{" "}
+						Para informações mais detalhadas ou personalizadas, entre em contato
+						com nossa equipe.
 					</p>
 					<div className="chat-actions">
 						<Link to="/" className="btn btn-secondary">
 							<i className="fas fa-home"></i> Voltar para Home
 						</Link>
 						<a
-							href="#contact"
+							href="https://wa.me/5522974033384"
 							className="btn btn-primary"
-							onClick={(e) => {
-								e.preventDefault();
-								document.getElementById("contact")?.scrollIntoView({
-									behavior: "smooth",
-								});
-							}}
+							target="_blank"
+							rel="noopener noreferrer"
 						>
 							<i className="fas fa-paper-plane"></i> Falar com um Especialista
 						</a>

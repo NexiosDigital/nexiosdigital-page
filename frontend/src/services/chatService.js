@@ -63,6 +63,26 @@ const chatService = {
 	},
 
 	/**
+	 * Envia uma mensagem usando o endpoint N8N
+	 * @param {string} message - Mensagem do usuário
+	 * @param {Array} conversationHistory - Histórico da conversa
+	 * @returns {Promise} - Resposta da API
+	 */
+	sendN8nMessage: async (message, conversationHistory = []) => {
+		try {
+			const response = await apiClient.post("/api/chat-n8n", {
+				message,
+				conversation_history: conversationHistory,
+			});
+
+			return response.data;
+		} catch (error) {
+			console.error("Erro ao enviar mensagem para N8N:", error);
+			throw error;
+		}
+	},
+
+	/**
 	 * Recupera uma conversa completa pelo ID
 	 * @param {string} conversationId - ID da conversa
 	 * @returns {Promise} - Resposta da API
