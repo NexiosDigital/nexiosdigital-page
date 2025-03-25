@@ -44,16 +44,16 @@ services:
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-backend.entrypoints=websecure"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-backend.tls=true"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}-backend.loadbalancer.server.port=8000"
-      # Rota para WebSockets - Nova configuração
+      
+      # WebSocket (versão corrigida)
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.service=${COMPOSE_PROJECT_NAME}-ws-service"
+      # Importante: use middlewares específicos para WebSockets
+      - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-ws-middleware.compress=true"
+      - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-ws-middleware.compress.excludedContentTypes=text/event-stream"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.middlewares=${COMPOSE_PROJECT_NAME}-ws-middleware"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws-service.loadbalancer.server.port=8000"
-      # Configurações específicas para WebSocket
-      - "traefik.http.middlewares.svc-websocket.websocket.pingInterval=30s"
-      - "traefik.http.middlewares.svc-websocket.websocket.pingTimeout=10s"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.middlewares=svc-websocket"
 
   mongo:
     image: mongo:latest
