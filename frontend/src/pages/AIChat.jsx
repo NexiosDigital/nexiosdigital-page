@@ -43,91 +43,140 @@ const AIChat = () => {
 	};
 
 	// Conectar ao WebSocket quando o componente montar
-	useEffect(() => {
-		const clientId = getClientId();
-		const config = getEnvConfig();
-
-		// Determine o protocolo correto (wss para https, ws para http)
-		const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-
-		// Trate a conversão da URL corretamente
-		let wsUrl = config.apiUrl.replace(/^https?:\/\//, "");
-
-		// Se estamos em desenvolvimento, ajustar a porta 3000 para 8000
-		if (wsUrl.includes(":3000")) {
-			wsUrl = wsUrl.replace(":3000", ":8000");
-		}
-
-		// Construa o endpoint WebSocket
-		const wsEndpoint = `${wsProtocol}//${wsUrl}/ws/${clientId}`;
-
-		console.log("Tentando conectar ao WebSocket:", wsEndpoint);
-
-		const wsConnection = new WebSocket(wsEndpoint);
-
-		wsConnection.onopen = () => {
-			console.log("WebSocket conectado com sucesso!");
-			setConnectionStatus("connected");
-			setSocket(wsConnection);
-		};
-
-		wsConnection.onmessage = (event) => {
-			console.log("Mensagem WebSocket recebida:", event.data);
-			try {
-				const data = JSON.parse(event.data);
-				console.log("Dados WebSocket parseados:", data);
-
-				// Verificar se é uma resposta de assistente
-				if (data.type === "assistant_response") {
-					console.log("Recebida resposta do assistente:", data);
-					// Se tiver conversation_id, verificar se corresponde à conversa atual
-					if (data.conversation_id && data.conversation_id === conversationId) {
-						console.log("Adicionando mensagem à conversa atual");
-						const assistantMessage = {
-							role: "assistant",
-							content: data.content,
-						};
-						setMessages((prev) => [...prev, assistantMessage]);
-						setIsTyping(false);
-					}
-					// Se não tiver conversation_id ou se for uma transmissão geral
-					else if (!data.conversation_id || data.type === "broadcast_message") {
-						console.log("Mensagem de broadcast recebida");
-						// Verificar se é uma resposta para a última mensagem enviada
-						if (data.original_message === lastSentMessage) {
-							console.log("Corresponde à última mensagem enviada");
-							const assistantMessage = {
-								role: "assistant",
-								content: data.content,
-							};
-							setMessages((prev) => [...prev, assistantMessage]);
-							setIsTyping(false);
-						}
-					}
-				}
-			} catch (error) {
-				console.error("Erro ao processar mensagem WebSocket:", error);
-			}
-		};
-
-		wsConnection.onclose = (event) => {
-			console.log("WebSocket desconectado:", event);
-			setConnectionStatus("disconnected");
-		};
-
-		wsConnection.onerror = (error) => {
-			console.error("Erro no WebSocket:", error);
-			setConnectionStatus("error");
-		};
-
-		// Limpar conexão quando o componente desmontar
-		return () => {
-			if (wsConnection) {
-				console.log("Fechando conexão WebSocket");
-				wsConnection.close();
-			}
-		};
-	}, [conversationId, lastSentMessage]);
+    useEffect(() => {
+        const clientId = getClientId();
+        const config = getEnvConfig();
+        let wsConnection = null;
+        let reconnectTimeout = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+        
+        const connectWebSocket = () => {
+            // Limpar qualquer timeout pendente
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+            
+            // Determine o protocolo correto (wss para https, ws para http)
+            const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            
+            // Trate a conversão da URL corretamente
+            let wsUrl = config.apiUrl.replace(/^https?:\/\//, "");
+            
+            // Se estamos em desenvolvimento, ajustar a porta 3000 para 8000
+            if (wsUrl.includes(":3000")) {
+                wsUrl = wsUrl.replace(":3000", ":8000");
+            }
+            
+            // Construa o endpoint WebSocket
+            const wsEndpoint = `${wsProtocol}//${wsUrl}/ws/${clientId}`;
+            
+            console.log("Tentando conectar ao WebSocket:", wsEndpoint);
+            setConnectionStatus("connecting");
+            
+            // Fechar conexão anterior se existir
+            if (wsConnection) {
+                wsConnection.close();
+            }
+            
+            // Criar nova conexão
+            wsConnection = new WebSocket(wsEndpoint);
+            
+            wsConnection.onopen = () => {
+                console.log("WebSocket conectado com sucesso!");
+                setConnectionStatus("connected");
+                setSocket(wsConnection);
+                reconnectAttempts = 0; // Reset counter on successful connection
+            };
+            
+            wsConnection.onmessage = (event) => {
+                console.log("Mensagem WebSocket recebida:", event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Ignore ping messages
+                    if (data.type === "ping") return;
+                    
+                    console.log("Dados WebSocket parseados:", data);
+                    
+                    // Verificar se é uma resposta de assistente
+                    if (data.type === "assistant_response") {
+                        console.log("Recebida resposta do assistente:", data);
+                        // Se tiver conversation_id, verificar se corresponde à conversa atual
+                        if (data.conversation_id && data.conversation_id === conversationId) {
+                            console.log("Adicionando mensagem à conversa atual");
+                            const assistantMessage = {
+                                role: "assistant",
+                                content: data.content,
+                            };
+                            setMessages((prev) => [...prev, assistantMessage]);
+                            setIsTyping(false);
+                        }
+                        // Se não tiver conversation_id ou se for uma transmissão geral
+                        else if (!data.conversation_id || data.type === "broadcast_message") {
+                            console.log("Mensagem de broadcast recebida");
+                            // Verificar se é uma resposta para a última mensagem enviada
+                            if (data.original_message === lastSentMessage) {
+                                console.log("Corresponde à última mensagem enviada");
+                                const assistantMessage = {
+                                    role: "assistant",
+                                    content: data.content,
+                                };
+                                setMessages((prev) => [...prev, assistantMessage]);
+                                setIsTyping(false);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Erro ao processar mensagem WebSocket:", error);
+                }
+            };
+            
+            wsConnection.onclose = (event) => {
+                console.log("WebSocket desconectado:", event);
+                setConnectionStatus("disconnected");
+                setSocket(null);
+                
+                // Tentar reconectar com delay exponencial, até máximo de tentativas
+                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // max 30 seconds
+                    console.log(`Tentando reconectar em ${delay/1000} segundos...`);
+                    reconnectAttempts++;
+                    reconnectTimeout = setTimeout(connectWebSocket, delay);
+                } else {
+                    console.log("Número máximo de tentativas de reconexão atingido");
+                }
+            };
+            
+            wsConnection.onerror = (error) => {
+                console.error("Erro no WebSocket:", error);
+                setConnectionStatus("error");
+            };
+        };
+        
+        // Iniciar conexão
+        connectWebSocket();
+        
+        // Função de ping para manter conexão ativa
+        const pingInterval = setInterval(() => {
+            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                console.log("Enviando ping para manter conexão WebSocket");
+                wsConnection.send(JSON.stringify({ type: "ping" }));
+            }
+        }, 30000); // ping a cada 30 segundos
+        
+        // Limpar conexão quando o componente desmontar
+        return () => {
+            clearInterval(pingInterval);
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+            if (wsConnection) {
+                console.log("Fechando conexão WebSocket");
+                wsConnection.close();
+            }
+        };
+    }, [conversationId, lastSentMessage]);
 
 	// Efeito para ajustar o scroll quando as mensagens mudam
 	useEffect(() => {
@@ -273,6 +322,10 @@ const AIChat = () => {
 						) : connectionStatus === "error" ? (
 							<>
 								<i className="fas fa-exclamation-circle"></i> Erro de conexão
+							</>
+						) : connectionStatus === "connecting" ? (
+							<>
+								<i className="fas fa-sync fa-spin"></i> Conectando...
 							</>
 						) : (
 							<>
