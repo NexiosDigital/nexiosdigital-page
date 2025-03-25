@@ -34,6 +34,15 @@ if not N8N_API_TOKEN:
 # Configuração da aplicação
 app = FastAPI(title="Nexios Digital API")
 
+# ADICIONADO: Evento de inicialização para DEBUG
+@app.on_event("startup")
+async def startup_event():
+    print("=== SERVIDOR INICIADO ===")
+    print("Configuração CORS: ", app.middleware_stack)
+    print("Rotas disponíveis:")
+    
+    print("========================")
+
 # Configuração do CORS - com domínios específicos para produção
 app.add_middleware(
     CORSMiddleware,
@@ -44,7 +53,8 @@ app.add_middleware(
         "https://n8n.nexiosdigital.com",
         # Manter para desenvolvimento
         "http://localhost:3000",
-        "http://localhost:8000"
+        "http://localhost:8000",
+        "*"  # TEMPORARIAMENTE permitir todas as origens para depuração
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -237,13 +247,29 @@ async def get_status():
     
     return status_info
 
-# Rota de chat simples usando OpenAI
-@app.post("/api/chat", response_model=ChatResponse)
+# Nova rota para depuração - vai ajudar a encontrar erros
+@app.get("/")
+async def root():
+    # Listar todas as rotas disponíveis
+    routes = [{"path": route.path, "name": route.name, "methods": list(route.methods)} 
+             for route in app.routes]
+    
+    return {
+        "message": "Nexios Digital API está online",
+        "available_routes": routes,
+        "environment": os.getenv("ENVIRONMENT", "development")
+    }
+
+# IMPORTANTE: Rota de chat simples usando OpenAI - MODIFICADA para compatibilidade
+@app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
     Endpoint simples de chat que usa a API OpenAI diretamente.
     """
     logger.info(f"Recebendo mensagem: {request.message}")
+    
+    # Log completo do request para debug
+    logger.debug(f"Request completo: {request}")
     
     # Gerar ou usar ID de conversa
     conversation_id = request.conversation_id or str(uuid.uuid4())
@@ -312,155 +338,3 @@ async def chat(request: ChatRequest):
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
-
-# Endpoint para chat com N8N
-@app.post("/api/chat-n8n", response_model=ChatResponse)
-async def chat_n8n(request: ChatRequest):
-    """
-    Endpoint para chat que utiliza fluxo N8N para processar mensagens.
-    """
-    logger.info(f"Recebendo mensagem para N8N: {request.message}")
-    
-    # Gerar ou usar ID de conversa
-    conversation_id = request.conversation_id or str(uuid.uuid4())
-    
-    if not N8N_WEBHOOK_URL:
-        logger.error("Erro: URL do webhook N8N não configurada")
-        return {"response": "Webhook N8N não configurado. Por favor, configure a variável de ambiente N8N_WEBHOOK_URL.", "conversation_id": conversation_id}
-    
-    try:
-        # Adicionar mensagem do usuário à conversa
-        store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
-        
-        # Preparar dados para enviar ao N8N
-        n8n_data = {
-            "message": request.message,
-            "conversation_history": [
-                {"role": msg.role, "content": msg.content} 
-                for msg in request.conversation_history
-            ],
-            "conversation_id": conversation_id,
-            "timestamp": datetime.now().isoformat(),
-            "token": N8N_API_TOKEN  # Enviar token para autenticação
-        }
-        
-        logger.info(f"Enviando dados para N8N: {n8n_data}")
-        
-        # Enviar para o webhook do N8N
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                N8N_WEBHOOK_URL,
-                json=n8n_data,
-                timeout=30.0  # Timeout maior para dar tempo ao N8N processar
-            )
-            
-            if response.status_code != 200:
-                error_msg = f"Erro ao processar mensagem com N8N. Código: {response.status_code}"
-                logger.error(error_msg)
-                return {"response": error_msg, "conversation_id": conversation_id}
-            
-            # Processar resposta do N8N
-            n8n_response = response.json()
-            logger.info(f"Resposta recebida de N8N: {n8n_response}")
-            
-            # Extrair resposta do formato adequado
-            if isinstance(n8n_response, dict) and "response" in n8n_response:
-                ai_response = n8n_response["response"]
-            elif isinstance(n8n_response, dict) and "text" in n8n_response:
-                ai_response = n8n_response["text"]
-            else:
-                ai_response = str(n8n_response)
-            
-            # Armazenar resposta na conversa
-            store_message(conversation_id, {"role": "assistant", "content": ai_response, "timestamp": datetime.now().isoformat()})
-            
-            return {"response": ai_response, "conversation_id": conversation_id}
-                
-    except Exception as e:
-        error_msg = f"Erro ao processar mensagem com N8N: {str(e)}"
-        logger.error(error_msg)
-        return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
-
-# Endpoint para receber respostas do N8N
-@app.post("/api/n8n-callback")
-async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verify_token)):
-    """
-    Endpoint para receber respostas processadas do N8N.
-    Este endpoint é chamado pelo N8N após processar a mensagem.
-    """
-    logger.info(f"Recebendo callback do N8N: {n8n_data}")
-    
-    try:
-        conversation_id = n8n_data.conversation_id
-        
-        if conversation_id:
-            # Armazenar a resposta do assistente na conversa
-            store_message(conversation_id, {
-                "role": "assistant", 
-                "content": n8n_data.processed_response,
-                "original_message": n8n_data.original_message,
-                "timestamp": n8n_data.timestamp or datetime.now().isoformat(),
-                "metadata": n8n_data.metadata
-            })
-            
-            # Enviar a resposta via WebSocket para o cliente correto
-            ws_message = {
-                "type": "assistant_response",
-                "conversation_id": conversation_id,
-                "content": n8n_data.processed_response,
-                "original_message": n8n_data.original_message,
-                "timestamp": n8n_data.timestamp or datetime.now().isoformat()
-            }
-            logger.info(f"Enviando mensagem WebSocket: {ws_message}")
-            await manager.broadcast(ws_message)
-            
-            return {
-                "status": "success", 
-                "message": "Resposta processada e enviada via WebSocket",
-                "conversation_id": conversation_id
-            }
-        else:
-            # Se não houver ID de conversa, apenas transmitir para todos
-            ws_message = {
-                "type": "broadcast_message",
-                "content": n8n_data.processed_response,
-                "original_message": n8n_data.original_message,
-                "timestamp": n8n_data.timestamp or datetime.now().isoformat()
-            }
-            logger.info(f"Enviando broadcast WebSocket: {ws_message}")
-            await manager.broadcast(ws_message)
-            
-            return {
-                "status": "success", 
-                "message": "Resposta transmitida para todos os clientes WebSocket"
-            }
-            
-    except Exception as e:
-        logger.error(f"Erro ao processar callback do N8N: {str(e)}")
-        return {
-            "status": "error",
-            "message": f"Erro ao processar resposta: {str(e)}"
-        }
-
-# Obter histórico de conversa
-@app.get("/api/conversations/{conversation_id}")
-async def get_conversation(conversation_id: str):
-    """
-    Obtém o histórico de uma conversa específica.
-    """
-    history = get_conversation_history(conversation_id)
-    if not history:
-        raise HTTPException(status_code=404, detail="Conversa não encontrada")
-    
-    return {"conversation_id": conversation_id, "messages": history}
-
-# Rota simples para verificar se o servidor está online
-@app.get("/")
-async def root():
-    return {"message": "Nexios Digital API está online"}
-
-# Iniciar o servidor
-if __name__ == "__main__":
-    import uvicorn
-    logger.info("Iniciando servidor Nexios Digital...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
