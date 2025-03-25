@@ -16,7 +16,7 @@ services:
     volumes:
       - frontend_build:/app/build
     environment:
-      - REACT_APP_API_URL=https://seudominio.com
+      - REACT_APP_API_URL=https://nexiosdigital.com
     networks:
       - internal
 
@@ -30,7 +30,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       # URL do webhook N8N - use a URL completa da sua instância N8N existente
-      - N8N_WEBHOOK_URL=https://seu-n8n.seudominio.com/webhook/nexios-chat-processor
+      - N8N_WEBHOOK_URL=https://webhook.nexiosdigital.com/webhook/nexios-chat-processor
       - N8N_API_TOKEN=${N8N_API_TOKEN}
     depends_on:
       - mongo
