@@ -13,10 +13,18 @@ from datetime import datetime
 # Configuração da aplicação
 app = FastAPI(title="Nexios Digital API")
 
-# Configuração do CORS - aceita requisições de qualquer origem
+# Configuração do CORS - com domínios específicos para produção
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Substitua com seus domínios reais
+    allow_origins=[
+        "https://seudominio.com",
+        "https://www.seudominio.com", 
+        "https://seu-n8n.seudominio.com",
+        # Manter para desenvolvimento
+        "http://localhost:3000",
+        "http://localhost:8000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,8 +34,10 @@ app.add_middleware(
 # Obter chave API do ambiente
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID", None)
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "")
-N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "seu_token_secreto_aqui")  # Token para autenticação
+# URL do webhook N8N - configurada para produção
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "https://seu-n8n.seudominio.com/webhook/nexios-chat-processor")
+# Token para autenticação de callbacks do N8N
+N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "seu_token_secreto_para_n8n")
 
 # Modelos para o chat
 class ChatMessage(BaseModel):
@@ -75,24 +85,39 @@ class ConnectionManager:
                 break
 
     async def broadcast(self, message: Dict[str, Any]):
+        print(f"Broadcasting message to {len(self.active_connections)} connections: {message}")
         for connection in self.active_connections:
             await connection["websocket"].send_json(message)
 
 manager = ConnectionManager()
 
-# Função para verificar autenticação para o endpoint N8N
+# Função para verificar autenticação para o endpoint N8N - Com depuração
 async def verify_token(authorization: Optional[str] = Header(None)):
+    print(f"Token recebido: {authorization}")
+    print(f"Token esperado: Bearer {N8N_API_TOKEN}")
+    
     if not authorization:
+        print("Erro: Token de autorização ausente")
         raise HTTPException(status_code=401, detail="Token de autorização ausente")
     
     try:
         scheme, token = authorization.split()
+        print(f"Esquema: {scheme}, Token: {token}")
+        
         if scheme.lower() != "bearer":
+            print("Erro: Formato de autorização inválido")
             raise HTTPException(status_code=401, detail="Formato de autorização inválido")
+        
+        # Comparar os tokens diretamente
+        print(f"Comparando token recebido '{token}' com token esperado '{N8N_API_TOKEN}'")
         if token != N8N_API_TOKEN:
+            print("Erro: Token inválido")
             raise HTTPException(status_code=401, detail="Token inválido")
+        
+        print("Token validado com sucesso!")
         return token
     except ValueError:
+        print("Erro: Formato de autorização inválido (não conseguiu separar)")
         raise HTTPException(status_code=401, detail="Formato de autorização inválido")
 
 # Função auxiliar para armazenar mensagens (pode ser substituída por uma implementação de BD)
@@ -278,7 +303,8 @@ async def chat_n8n(request: ChatRequest):
                 for msg in request.conversation_history
             ],
             "conversation_id": conversation_id,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "token": N8N_API_TOKEN  # Enviar token para autenticação
         }
         
         print(f"Enviando dados para N8N: {n8n_data}")
@@ -318,7 +344,7 @@ async def chat_n8n(request: ChatRequest):
         print(error_msg)
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
 
-# Novo endpoint para receber respostas do N8N
+# Endpoint para receber respostas do N8N
 @app.post("/api/n8n-callback")
 async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verify_token)):
     """
@@ -341,13 +367,15 @@ async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verif
             })
             
             # Enviar a resposta via WebSocket para o cliente correto
-            await manager.broadcast({
+            ws_message = {
                 "type": "assistant_response",
                 "conversation_id": conversation_id,
                 "content": n8n_data.processed_response,
                 "original_message": n8n_data.original_message,
                 "timestamp": n8n_data.timestamp or datetime.now().isoformat()
-            })
+            }
+            print(f"Enviando mensagem WebSocket: {ws_message}")
+            await manager.broadcast(ws_message)
             
             return {
                 "status": "success", 
@@ -356,12 +384,14 @@ async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verif
             }
         else:
             # Se não houver ID de conversa, apenas transmitir para todos
-            await manager.broadcast({
+            ws_message = {
                 "type": "broadcast_message",
                 "content": n8n_data.processed_response,
                 "original_message": n8n_data.original_message,
                 "timestamp": n8n_data.timestamp or datetime.now().isoformat()
-            })
+            }
+            print(f"Enviando broadcast WebSocket: {ws_message}")
+            await manager.broadcast(ws_message)
             
             return {
                 "status": "success", 

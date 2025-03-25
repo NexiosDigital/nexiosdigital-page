@@ -14,7 +14,7 @@ const AIChat = () => {
 	]);
 	const [input, setInput] = useState("");
 	const [isTyping, setIsTyping] = useState(false);
-	const [useN8n, setUseN8n] = useState(true); // Definido como true por padrão para usar N8N
+	// Sempre usando n8n, sem opção para mudar
 	const [conversationId, setConversationId] = useState(null);
 	const [lastSentMessage, setLastSentMessage] = useState("");
 	const [socket, setSocket] = useState(null);
@@ -22,6 +22,7 @@ const AIChat = () => {
 
 	// Referências
 	const messagesEndRef = useRef(null);
+	const chatMessagesRef = useRef(null);
 	const chatInputRef = useRef(null);
 
 	// Geração de ID de cliente para WebSocket
@@ -37,35 +38,46 @@ const AIChat = () => {
 	// Conectar ao WebSocket quando o componente montar
 	useEffect(() => {
 		const clientId = getClientId();
+
+		// Use o endereço completo da API em produção (obtido das variáveis de ambiente)
 		const backendUrl = process.env.REACT_APP_API_URL || window.location.origin;
-		const wsUrl = backendUrl.replace(/^https?:\/\//, "wss://");
-		const wsConnection = new WebSocket(`${wsUrl}/ws/${clientId}`);
+
+		// Determine o protocolo correto (wss para https, ws para http)
+		const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+		// Trate a conversão da URL corretamente
+		let wsUrl = backendUrl.replace(/^https?:\/\//, "");
+
+		// Se estamos em desenvolvimento, ajustar a porta 3000 para 8000
+		if (wsUrl.includes(":3000")) {
+			wsUrl = wsUrl.replace(":3000", ":8000");
+		}
+
+		// Construa o endpoint WebSocket
+		const wsEndpoint = `${wsProtocol}//${wsUrl}/ws/${clientId}`;
+
+		console.log("Tentando conectar ao WebSocket:", wsEndpoint);
+
+		const wsConnection = new WebSocket(wsEndpoint);
 
 		wsConnection.onopen = () => {
-			console.log("WebSocket conectado!");
+			console.log("WebSocket conectado com sucesso!");
 			setConnectionStatus("connected");
 			setSocket(wsConnection);
 		};
 
 		wsConnection.onmessage = (event) => {
-			const data = JSON.parse(event.data);
-			console.log("Mensagem WebSocket recebida:", data);
+			console.log("Mensagem WebSocket recebida:", event.data);
+			try {
+				const data = JSON.parse(event.data);
+				console.log("Dados WebSocket parseados:", data);
 
-			// Verificar se é uma resposta de assistente
-			if (data.type === "assistant_response") {
-				// Se tiver conversation_id, verificar se corresponde à conversa atual
-				if (data.conversation_id && data.conversation_id === conversationId) {
-					const assistantMessage = {
-						role: "assistant",
-						content: data.content,
-					};
-					setMessages((prev) => [...prev, assistantMessage]);
-					setIsTyping(false);
-				}
-				// Se não tiver conversation_id ou se for uma transmissão geral
-				else if (!data.conversation_id || data.type === "broadcast_message") {
-					// Verificar se é uma resposta para a última mensagem enviada
-					if (data.original_message === lastSentMessage) {
+				// Verificar se é uma resposta de assistente
+				if (data.type === "assistant_response") {
+					console.log("Recebida resposta do assistente:", data);
+					// Se tiver conversation_id, verificar se corresponde à conversa atual
+					if (data.conversation_id && data.conversation_id === conversationId) {
+						console.log("Adicionando mensagem à conversa atual");
 						const assistantMessage = {
 							role: "assistant",
 							content: data.content,
@@ -73,12 +85,28 @@ const AIChat = () => {
 						setMessages((prev) => [...prev, assistantMessage]);
 						setIsTyping(false);
 					}
+					// Se não tiver conversation_id ou se for uma transmissão geral
+					else if (!data.conversation_id || data.type === "broadcast_message") {
+						console.log("Mensagem de broadcast recebida");
+						// Verificar se é uma resposta para a última mensagem enviada
+						if (data.original_message === lastSentMessage) {
+							console.log("Corresponde à última mensagem enviada");
+							const assistantMessage = {
+								role: "assistant",
+								content: data.content,
+							};
+							setMessages((prev) => [...prev, assistantMessage]);
+							setIsTyping(false);
+						}
+					}
 				}
+			} catch (error) {
+				console.error("Erro ao processar mensagem WebSocket:", error);
 			}
 		};
 
-		wsConnection.onclose = () => {
-			console.log("WebSocket desconectado");
+		wsConnection.onclose = (event) => {
+			console.log("WebSocket desconectado:", event);
 			setConnectionStatus("disconnected");
 		};
 
@@ -90,27 +118,34 @@ const AIChat = () => {
 		// Limpar conexão quando o componente desmontar
 		return () => {
 			if (wsConnection) {
+				console.log("Fechando conexão WebSocket");
 				wsConnection.close();
 			}
 		};
-	}, [conversationId]);
+	}, [conversationId, lastSentMessage]);
 
-	// Efeito para rolar para a última mensagem
+	// Efeito para ajustar o scroll quando as mensagens mudam
 	useEffect(() => {
-		scrollToBottom();
+		// Em vez de rolar para a parte inferior, mantenha a posição de scroll
+		// mas garanta que a última mensagem esteja visível
+		if (chatMessagesRef.current) {
+			chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+		}
 	}, [messages]);
-
-	// Função para rolar para a última mensagem
-	const scrollToBottom = () => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	};
 
 	// Enviar mensagem para o backend
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		const backendUrl =
 			process.env.REACT_APP_API_URL ||
-			window.location.origin.replace("3000", "8000");
-		const endpoint = useN8n ? "/api/chat-n8n" : "/api/chat";
+			window.location.origin.replace(":3000", ":8000");
+		// Sempre usando o endpoint n8n
+		const endpoint = "/api/chat-n8n";
+
+		console.log(`Enviando mensagem para ${backendUrl}${endpoint}:`, {
+			message: messageText,
+			conversation_history: msgConversationHistory,
+			conversation_id: conversationId,
+		});
 
 		try {
 			const response = await axios.post(`${backendUrl}${endpoint}`, {
@@ -118,6 +153,8 @@ const AIChat = () => {
 				conversation_history: msgConversationHistory,
 				conversation_id: conversationId,
 			});
+
+			console.log("Resposta recebida:", response.data);
 
 			// Se houver um ID de conversa na resposta, armazene-o
 			if (response.data.conversation_id) {
@@ -161,20 +198,35 @@ const AIChat = () => {
 
 			// Enviar a mensagem para o backend
 			const response = await sendMessage(currentInput, conversationHistory);
+			console.log("Resposta completa do sendMessage:", response);
 
-			// Se estamos usando WebSockets, a resposta virá pelo WebSocket
-			// Mas se o WebSocket falhar, ainda podemos mostrar a resposta da API REST
+			// Se WebSocket não estiver conectado, mostrar a resposta direta
 			if (connectionStatus !== "connected") {
-				console.log("WebSocket não conectado, usando resposta HTTP:", response);
+				console.log("WebSocket não conectado - usando resposta direta");
 				const assistantMessage = {
 					role: "assistant",
 					content: response.response,
 				};
 				setMessages((prev) => [...prev, assistantMessage]);
 				setIsTyping(false);
+			} else {
+				console.log("Aguardando resposta via WebSocket...");
+				// Manter isTyping = true até que a resposta via WebSocket chegue
+
+				// Adicione um timeout de segurança para garantir que a UI não fique presa
+				// esperando resposta do WebSocket que não chegue
+				setTimeout(() => {
+					if (isTyping) {
+						console.log("Timeout do WebSocket - usando resposta direta");
+						const assistantMessage = {
+							role: "assistant",
+							content: response.response,
+						};
+						setMessages((prev) => [...prev, assistantMessage]);
+						setIsTyping(false);
+					}
+				}, 10000); // 10 segundos de timeout
 			}
-			// Caso contrário, aguardamos a resposta via WebSocket
-			// A resposta será processada no evento onmessage do WebSocket
 		} catch (error) {
 			console.error("Erro ao processar mensagem:", error);
 
@@ -226,26 +278,8 @@ const AIChat = () => {
 					</div>
 				</div>
 
-				{/* Seletor de modo de processamento */}
-				<div className="chat-mode-selector">
-					<div className="mode-toggle">
-						<label className="toggle-label">
-							<input
-								type="checkbox"
-								checked={useN8n}
-								onChange={() => setUseN8n(!useN8n)}
-								className="toggle-input"
-							/>
-							<span className="toggle-slider"></span>
-							<span className="toggle-text">
-								{useN8n ? "Usando Fluxo N8N" : "Usando OpenAI Direto"}
-							</span>
-						</label>
-					</div>
-				</div>
-
 				<div className="chat-container">
-					<div className="chat-messages">
+					<div className="chat-messages" ref={chatMessagesRef}>
 						{messages.map((message, index) => (
 							<div key={index} className={`message message-${message.role}`}>
 								{message.content}
@@ -286,12 +320,8 @@ const AIChat = () => {
 				<div className="chat-footer">
 					<p>
 						Este assistente virtual utiliza IA para fornecer informações sobre
-						nossos serviços.{" "}
-						{useN8n
-							? "Atualmente usando fluxo N8N personalizado."
-							: "Atualmente usando OpenAI diretamente."}{" "}
-						Para informações mais detalhadas ou personalizadas, entre em contato
-						com nossa equipe.
+						nossos serviços. Para informações mais detalhadas ou personalizadas,
+						entre em contato com nossa equipe.
 					</p>
 					<div className="chat-actions">
 						<Link to="/" className="btn btn-secondary">
