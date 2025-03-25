@@ -26,6 +26,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     restart: always
+    ports:
+      - "127.0.0.1:8000:8000"  # Mapear porta localmente para ajudar no debugging
     environment:
       - MONGODB_URL=mongodb://mongo:27017
       - SECRET_KEY=${SECRET_KEY}
@@ -39,15 +41,18 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      # Rota única para tudo (API e WebSockets)
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${DOMAIN_NAME}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls=true"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=8000"
-      # Configuração específica para WebSockets
-      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Connection=Upgrade"
-      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Upgrade=websocket"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.middlewares=websocket@docker"
+      # Rota explícita para endpoint de API
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.entrypoints=websecure"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.tls=true"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.priority=100"
+      
+      # Rota para WebSockets (deixando desativada por enquanto)
+      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
+      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
+      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
+      # - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws-service.loadbalancer.server.port=8000"
 
   mongo:
     image: mongo:latest
