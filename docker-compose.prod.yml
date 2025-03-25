@@ -41,18 +41,17 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      # Rota explícita para endpoint de API - Configuração corrigida
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.tls=true"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-api.loadbalancer.server.port=8000"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.priority=100"
+      # CONFIGURAÇÃO SIMPLIFICADA - envia qualquer rota /api/* para o backend sem path stripping
+      - "traefik.http.routers.nexios-api.rule=Host(`nexiosdigital.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.nexios-api.entrypoints=websecure"
+      - "traefik.http.routers.nexios-api.tls=true"
+      - "traefik.http.services.nexios-api.loadbalancer.server.port=8000"
       
-      # WebSockets - habilitado
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws.loadbalancer.server.port=8000"
+      # WebSockets configuração
+      - "traefik.http.routers.nexios-ws.rule=Host(`nexiosdigital.com`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.nexios-ws.entrypoints=websecure"
+      - "traefik.http.routers.nexios-ws.tls=true"
+      - "traefik.http.services.nexios-ws.loadbalancer.server.port=8000"
 
   mongo:
     image: mongo:latest
@@ -78,11 +77,10 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${DOMAIN_NAME}`) && !PathPrefix(`/api`, `/ws`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.priority=90"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.nexios-frontend.rule=Host(`nexiosdigital.com`) && !PathPrefix(`/api`, `/ws`)"
+      - "traefik.http.routers.nexios-frontend.entrypoints=websecure"
+      - "traefik.http.routers.nexios-frontend.tls=true"
+      - "traefik.http.services.nexios-frontend.loadbalancer.server.port=80"
 
 volumes:
   mongo_data:
