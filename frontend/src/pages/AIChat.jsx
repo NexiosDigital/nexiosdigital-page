@@ -30,13 +30,13 @@ const AIChat = () => {
 		}
 	}, [messages]);
 
-	// Enviar mensagem para o backend - FUNÇÃO MODIFICADA
+	// Enviar mensagem para o backend - ACESSO DIRETO
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
 			
-			// Usar um URL absoluto ou relativo, dependendo do ambiente
-			const apiUrl = "/api/chat";  // URL relativo que funciona com proxy configurado
+			// Acessar o backend diretamente pelo IP
+			const apiUrl = "http://178.156.155.230:8000/api/chat";
 			
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
 			
