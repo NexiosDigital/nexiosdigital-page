@@ -41,18 +41,18 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      # Rota explícita para endpoint de API
+      # Rota explícita para endpoint de API - Configuração corrigida
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.entrypoints=websecure"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.tls=true"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}-api.loadbalancer.server.port=8000"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.priority=100"
       
-      # Rota para WebSockets (deixando desativada por enquanto)
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
-      # - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
-      # - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws-service.loadbalancer.server.port=8000"
+      # WebSockets - habilitado
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws.loadbalancer.server.port=8000"
 
   mongo:
     image: mongo:latest
