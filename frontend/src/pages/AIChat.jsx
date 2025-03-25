@@ -34,40 +34,45 @@ const AIChat = () => {
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
-			
+
 			// Usar o endpoint de fallback em vez do endpoint normal
-            // MODIFICADO: Usando o endpoint chat-direct em vez de chat
+			// MODIFICADO: Usando o endpoint chat-direct em vez de chat
 			const apiUrl = "/api/chat-direct";
-			
+
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
-			
-			const response = await axios.post(apiUrl, {
-				message: messageText,
-				conversation_history: msgConversationHistory.map(msg => ({
-					role: msg.role,
-					content: msg.content
-				})),
-				conversation_id: conversationId
-			}, {
-				headers: {
-					'Content-Type': 'application/json'
+
+			const response = await axios.post(
+				apiUrl,
+				{
+					message: messageText,
+					conversation_history: msgConversationHistory.map((msg) => ({
+						role: msg.role,
+						content: msg.content,
+					})),
+					conversation_id: conversationId,
+				},
+				{
+					headers: {
+						"Content-Type": "application/json",
+					},
 				}
-			});
-			
+			);
+
 			// Log da resposta para depuração
 			console.log("Resposta do servidor:", response);
-			
+
 			// Garantir que estamos processando a resposta corretamente
 			if (response.data && (response.data.response || response.data.text)) {
 				return {
 					response: response.data.response || response.data.text,
-					conversation_id: response.data.conversation_id || conversationId
+					conversation_id: response.data.conversation_id || conversationId,
 				};
 			} else {
 				console.warn("Formato de resposta inesperado:", response.data);
 				return {
-					response: "Desculpe, recebi uma resposta em formato inesperado do servidor.",
-					conversation_id: conversationId
+					response:
+						"Desculpe, recebi uma resposta em formato inesperado do servidor.",
+					conversation_id: conversationId,
 				};
 			}
 		} catch (error) {
@@ -115,7 +120,7 @@ const AIChat = () => {
 			};
 			setMessages((prev) => [...prev, assistantMessage]);
 			setIsTyping(false);
-			
+
 			// Salvar o ID da conversa se fornecido
 			if (response.conversation_id) {
 				setConversationId(response.conversation_id);
@@ -210,7 +215,7 @@ const AIChat = () => {
 						<Link to="/" className="btn btn-secondary">
 							<i className="fas fa-home"></i> Voltar para Home
 						</Link>
-						
+						<a
 							href="https://wa.me/5522974033384"
 							className="btn btn-primary"
 							target="_blank"
