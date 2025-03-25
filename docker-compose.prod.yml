@@ -39,21 +39,15 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      # Rota para API REST
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-backend.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-backend.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-backend.tls=true"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-backend.loadbalancer.server.port=8000"
-      
-      # WebSocket (versão corrigida)
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
-      # Importante: use middlewares específicos para WebSockets
-      - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-ws-middleware.compress=true"
-      - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-ws-middleware.compress.excludedContentTypes=text/event-stream"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.middlewares=${COMPOSE_PROJECT_NAME}-ws-middleware"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws-service.loadbalancer.server.port=8000"
+      # Rota única para tudo (API e WebSockets)
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls=true"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=8000"
+      # Configuração específica para WebSockets
+      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Connection=Upgrade"
+      - "traefik.http.middlewares.websocket.headers.customrequestheaders.Upgrade=websocket"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.middlewares=websocket@docker"
 
   mongo:
     image: mongo:latest
@@ -79,9 +73,10 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${DOMAIN_NAME}`) && !PathPrefix(`/api`, `/ws`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.entrypoints=websecure"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.priority=90"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}-frontend.loadbalancer.server.port=80"
 
 volumes:
