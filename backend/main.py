@@ -146,25 +146,37 @@ def store_message(conversation_id: str, message: Dict[str, Any]):
 def get_conversation_history(conversation_id: str) -> List[Dict[str, Any]]:
     return conversation_store.get(conversation_id, [])
 
-# Rota WebSocket
+# Rota WebSocket com tratamento de erros melhorado
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    await manager.connect(websocket, client_id)
     try:
+        await manager.connect(websocket, client_id)
+        logger.info(f"WebSocket conectado para cliente {client_id}")
+        
+        # Loop para manter a conexão ativa e processar mensagens
         while True:
-            # Receber mensagem do cliente
-            data = await websocket.receive_text()
-            # Processar a mensagem, se necessário
-            logger.info(f"Mensagem recebida do cliente {client_id}: {data}")
-            
-            # Se quiser processar a mensagem via WebSocket:
-            # try:
-            #     request_data = json.loads(data)
-            #     # Processar e responder...
-            # except json.JSONDecodeError:
-            #     pass
-            
+            try:
+                # Receber mensagem do cliente com timeout para evitar bloqueio indefinido
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
+                logger.info(f"Mensagem recebida do cliente {client_id}: {data}")
+                
+                # Echo para confirmar conexão ativa
+                await websocket.send_json({"type": "connection_alive", "message": "Conexão ativa"})
+                
+            except asyncio.TimeoutError:
+                # Ping para manter a conexão viva
+                try:
+                    await websocket.send_json({"type": "ping"})
+                    logger.debug(f"Ping enviado para cliente {client_id}")
+                except Exception as e:
+                    logger.error(f"Erro ao enviar ping para {client_id}: {str(e)}")
+                    raise WebSocketDisconnect()
+                    
     except WebSocketDisconnect:
+        logger.info(f"WebSocket desconectado para cliente {client_id}")
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"Erro no WebSocket para cliente {client_id}: {str(e)}")
         manager.disconnect(websocket)
 
 # Rota para verificar status da API
