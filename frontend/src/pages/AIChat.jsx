@@ -30,17 +30,17 @@ const AIChat = () => {
 		}
 	}, [messages]);
 
-	// Enviar mensagem para o backend - ACESSO DIRETO
+	// Usando URL relativa em vez de absoluta
+	// Isso permite que o proxy no servidor faça o encaminhamento seguro
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
 			
-			// Acessar o backend diretamente pelo IP
-			const apiUrl = "http://178.156.155.230:8000/api/chat";
+			// Usar URL relativa - deixa o navegador usar a mesma origem (mesma URL e protocolo)
+			const apiUrl = "/api/chat";
 			
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
 			
-			// Garantir que estamos enviando todos os dados necessários
 			const response = await axios.post(apiUrl, {
 				message: messageText,
 				conversation_history: msgConversationHistory.map(msg => ({
@@ -49,7 +49,6 @@ const AIChat = () => {
 				})),
 				conversation_id: conversationId
 			}, {
-				// Adicionar headers explícitos para garantir que a requisição seja processada corretamente
 				headers: {
 					'Content-Type': 'application/json'
 				}
@@ -76,6 +75,9 @@ const AIChat = () => {
 			throw error;
 		}
 	};
+
+	// O resto do componente permanece igual...
+	// ... código omitido para brevidade ...
 
 	// Manipulador para envio de mensagens
 	const handleSendMessage = async () => {
