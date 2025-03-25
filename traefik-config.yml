@@ -1,30 +1,14 @@
 http:
-  middlewares:
-    websocket:
-      headers:
-        customRequestHeaders:
-          Connection: "Upgrade"
-          Upgrade: "websocket"
-      retry:
-        attempts: 3
-        initialInterval: "500ms"
-      forwardAuth:
-        address: "http://backend:8000/api/status"
-        trustForwardHeader: true
-  
   routers:
-    websocket:
+    api:
+      rule: "Host(`nexiosdigital.com`, `www.nexiosdigital.com`) && PathPrefix(`/api`)"
+      service: "nexiosdigital-backend"
       entryPoints:
         - "websecure"
-      rule: "Host(`nexiosdigital.com`) && PathPrefix(`/ws`)"
-      service: "backend@docker"
       tls: {}
-      middlewares:
-        - "websocket"
-
+  
   services:
-    backend:
+    nexiosdigital-backend:
       loadBalancer:
         servers:
-          - url: "http://backend:8000"
-        passHostHeader: true
+          - url: "http://10.0.1.139:8000"
