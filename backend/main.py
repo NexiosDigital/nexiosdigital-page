@@ -19,8 +19,11 @@ logger = logging.getLogger(__name__)
 # Verificar variáveis de ambiente críticas
 N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL")
 if not N8N_WEBHOOK_URL:
-    logger.error("N8N_WEBHOOK_URL não está configurada no ambiente")
-    raise ValueError("N8N_WEBHOOK_URL é obrigatória. Configure a variável de ambiente.")
+    logger.warning("N8N_WEBHOOK_URL não está configurada no ambiente")
+    # Comentado para evitar falha na inicialização
+    # raise ValueError("N8N_WEBHOOK_URL é obrigatória. Configure a variável de ambiente.")
+    N8N_WEBHOOK_URL = "https://webhook.nexiosdigital.com/webhook/9862149e-e4d5-4c63-b2ce-2a4954c531f2"
+    logger.warning(f"Usando URL padrão para webhook N8N: {N8N_WEBHOOK_URL}")
 
 # Obter outras variáveis de ambiente
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -260,7 +263,7 @@ async def root():
         "environment": os.getenv("ENVIRONMENT", "development")
     }
 
-# IMPORTANTE: Rota de chat simples usando OpenAI - MODIFICADA para compatibilidade
+# Rota de chat simples usando OpenAI
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
@@ -337,4 +340,84 @@ async def chat(request: ChatRequest):
     
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
+        return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
+
+# NOVO ENDPOINT DE FALLBACK QUE USA OpenAI DIRETAMENTE SEM DEPENDER DO N8N
+@app.post("/api/chat-direct")
+async def chat_direct(request: ChatRequest):
+    """
+    Endpoint de fallback que usa a API OpenAI diretamente, sem depender do N8N.
+    """
+    logger.info(f"Recebendo mensagem para processamento direto: {request.message}")
+    
+    # Log completo do request para debug
+    logger.debug(f"Request completo (direto): {request}")
+    
+    # Gerar ou usar ID de conversa
+    conversation_id = request.conversation_id or str(uuid.uuid4())
+    
+    if not OPENAI_API_KEY:
+        logger.error("Erro: Chave API não configurada")
+        return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
+    
+    try:
+        # Criar cliente OpenAI
+        if OPENAI_ORG_ID:
+            client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)
+        else:
+            client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        # Preparar mensagens para a API
+        messages = []
+        
+        # Adicionar mensagem de sistema (contexto para a IA)
+        messages.append({
+            "role": "system", 
+            "content": """
+            Você é o assistente virtual da Nexios Digital, uma empresa de soluções de inteligência artificial.
+            Forneça informações sobre nossos serviços:
+            1. Agentes de IA para atendimento ao cliente
+            2. Automação de vendas e processos
+            3. Consultoria em implementação de IA
+            4. Automação com ClickUp
+            
+            Seja profissional, amigável e conciso nas suas respostas.
+            """
+        })
+        
+        # Adicionar histórico de conversa (se existir)
+        for message in request.conversation_history:
+            messages.append({
+                "role": message.role,
+                "content": message.content
+            })
+        
+        # Adicionar a mensagem atual do usuário
+        messages.append({
+            "role": "user",
+            "content": request.message
+        })
+        
+        logger.info(f"[DIRETO] Enviando {len(messages)} mensagens para OpenAI")
+        
+        # Fazer a chamada para a API
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",  # Modelo mais econômico e rápido
+            messages=messages,
+            temperature=0.7,
+            max_tokens=800
+        )
+        
+        # Extrair resposta
+        ai_response = response.choices[0].message.content
+        logger.info(f"[DIRETO] Resposta recebida: {ai_response[:50]}...")
+        
+        # Armazenar mensagens na conversa
+        store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
+        store_message(conversation_id, {"role": "assistant", "content": ai_response, "timestamp": datetime.now().isoformat()})
+        
+        return {"response": ai_response, "conversation_id": conversation_id}
+    
+    except Exception as e:
+        logger.error(f"[DIRETO] Erro ao processar mensagem: {str(e)}")
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}

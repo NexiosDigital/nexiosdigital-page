@@ -30,14 +30,14 @@ const AIChat = () => {
 		}
 	}, [messages]);
 
-	// Usando URL relativa em vez de absoluta
-	// Isso permite que o proxy no servidor faça o encaminhamento seguro
+	// Função modificada para usar o endpoint de fallback
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
 			
-			// Usar URL relativa - deixa o navegador usar a mesma origem (mesma URL e protocolo)
-			const apiUrl = "/api/chat";
+			// Usar o endpoint de fallback em vez do endpoint normal
+            // MODIFICADO: Usando o endpoint chat-direct em vez de chat
+			const apiUrl = "/api/chat-direct";
 			
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
 			
@@ -75,9 +75,6 @@ const AIChat = () => {
 			throw error;
 		}
 	};
-
-	// O resto do componente permanece igual...
-	// ... código omitido para brevidade ...
 
 	// Manipulador para envio de mensagens
 	const handleSendMessage = async () => {
@@ -213,7 +210,7 @@ const AIChat = () => {
 						<Link to="/" className="btn btn-secondary">
 							<i className="fas fa-home"></i> Voltar para Home
 						</Link>
-						<a
+						
 							href="https://wa.me/5522974033384"
 							className="btn btn-primary"
 							target="_blank"
