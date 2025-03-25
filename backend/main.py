@@ -18,9 +18,9 @@ app.add_middleware(
     CORSMiddleware,
     # Substitua com seus domínios reais
     allow_origins=[
-        "https://seudominio.com",
-        "https://www.seudominio.com", 
-        "https://seu-n8n.seudominio.com",
+        "https://nexiosdigital.com",
+        "https://www.nexiosdigital.com", 
+        "https://n8n.nexiosdigital.com",
         # Manter para desenvolvimento
         "http://localhost:3000",
         "http://localhost:8000"
@@ -35,7 +35,7 @@ app.add_middleware(
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID", None)
 # URL do webhook N8N - configurada para produção
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "https://seu-n8n.seudominio.com/webhook/nexios-chat-processor")
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "https://webhook.nexiosdigital.com/webhook/nexios-chat-processor")
 # Token para autenticação de callbacks do N8N
 N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "seu_token_secreto_para_n8n")
 
