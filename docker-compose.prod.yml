@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile.prod
     restart: always
     ports:
-      - "8000:8000"  # MODIFICADO: Expõe a porta 8000 publicamente para acesso direto
+      - "127.0.0.1:8000:8000"  # REVERTIDO: Expõe a porta 8000 apenas para localhost (mais seguro)
     environment:
       - MONGODB_URL=mongodb://mongo:27017
       - SECRET_KEY=${SECRET_KEY}
