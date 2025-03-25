@@ -14,7 +14,6 @@ const AIChat = () => {
 	]);
 	const [input, setInput] = useState("");
 	const [isTyping, setIsTyping] = useState(false);
-	// Sempre usando n8n, sem opção para mudar
 	const [conversationId, setConversationId] = useState(null);
 	const [lastSentMessage, setLastSentMessage] = useState("");
 	const [socket, setSocket] = useState(null);
@@ -24,6 +23,14 @@ const AIChat = () => {
 	const messagesEndRef = useRef(null);
 	const chatMessagesRef = useRef(null);
 	const chatInputRef = useRef(null);
+
+	// Obter configurações do ambiente
+	const getEnvConfig = () => {
+		return {
+			apiUrl: process.env.REACT_APP_API_URL || window.location.origin,
+			n8nWebhookUrl: process.env.REACT_APP_N8N_WEBHOOK_URL || null
+		};
+	};
 
 	// Geração de ID de cliente para WebSocket
 	const getClientId = () => {
@@ -38,15 +45,13 @@ const AIChat = () => {
 	// Conectar ao WebSocket quando o componente montar
 	useEffect(() => {
 		const clientId = getClientId();
-
-		// Use o endereço completo da API em produção (obtido das variáveis de ambiente)
-		const backendUrl = process.env.REACT_APP_API_URL || window.location.origin;
+		const config = getEnvConfig();
 
 		// Determine o protocolo correto (wss para https, ws para http)
 		const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
 		// Trate a conversão da URL corretamente
-		let wsUrl = backendUrl.replace(/^https?:\/\//, "");
+		let wsUrl = config.apiUrl.replace(/^https?:\/\//, "");
 
 		// Se estamos em desenvolvimento, ajustar a porta 3000 para 8000
 		if (wsUrl.includes(":3000")) {
@@ -135,10 +140,9 @@ const AIChat = () => {
 
 	// Enviar mensagem para o backend
 	const sendMessage = async (messageText, msgConversationHistory) => {
-		const backendUrl =
-			process.env.REACT_APP_API_URL ||
-			window.location.origin.replace(":3000", ":8000");
-		// Sempre usando o endpoint n8n
+		const config = getEnvConfig();
+		const backendUrl = config.apiUrl.replace(":3000", ":8000");
+		// Endpoint para chat com N8N
 		const endpoint = "/api/chat-n8n";
 
 		console.log(`Enviando mensagem para ${backendUrl}${endpoint}:`, {
