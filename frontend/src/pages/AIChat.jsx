@@ -30,45 +30,46 @@ const AIChat = () => {
 		}
 	}, [messages]);
 
-	// Enviar mensagem para o backend
+	// Enviar mensagem para o backend - FUNÇÃO MODIFICADA
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
 			
-			// Configurar a API para chamadas diretas ao webhook do N8N
-			// Pode ser uma solução temporária até que o roteamento de API seja corrigido
-			let useDirectN8N = false;
+			// Usar um URL absoluto ou relativo, dependendo do ambiente
+			const apiUrl = "/api/chat";  // URL relativo que funciona com proxy configurado
 			
-			if (useDirectN8N) {
-				// OPÇÃO 1: Chamar o webhook do N8N diretamente (não recomendado para produção - apenas debug)
-				const n8nWebhookUrl = process.env.REACT_APP_N8N_WEBHOOK_URL || "https://webhook.nexiosdigital.com/webhook/nexios-chat-processor";
-				
-				console.log(`Enviando diretamente para o webhook N8N: ${n8nWebhookUrl}`);
-				
-				const response = await axios.post(n8nWebhookUrl, {
-					message: messageText,
-					conversation_history: msgConversationHistory,
-					conversation_id: conversationId,
-					timestamp: new Date().toISOString()
-				});
-				
+			console.log(`Enviando para API endpoint: ${apiUrl}`);
+			
+			// Garantir que estamos enviando todos os dados necessários
+			const response = await axios.post(apiUrl, {
+				message: messageText,
+				conversation_history: msgConversationHistory.map(msg => ({
+					role: msg.role,
+					content: msg.content
+				})),
+				conversation_id: conversationId
+			}, {
+				// Adicionar headers explícitos para garantir que a requisição seja processada corretamente
+				headers: {
+					'Content-Type': 'application/json'
+				}
+			});
+			
+			// Log da resposta para depuração
+			console.log("Resposta do servidor:", response);
+			
+			// Garantir que estamos processando a resposta corretamente
+			if (response.data && (response.data.response || response.data.text)) {
 				return {
-					response: response.data.text || response.data.response || "Resposta recebida",
-					conversation_id: conversationId || "new_session"
+					response: response.data.response || response.data.text,
+					conversation_id: response.data.conversation_id || conversationId
 				};
 			} else {
-				// OPÇÃO 2: Chamar o endpoint API no backend (caminho normal)
-				const apiUrl = "/api/chat";  // Mudar para um endpoint que comprovadamente funciona
-				
-				console.log(`Enviando para API endpoint: ${apiUrl}`);
-				
-				const response = await axios.post(apiUrl, {
-					message: messageText,
-					conversation_history: msgConversationHistory,
+				console.warn("Formato de resposta inesperado:", response.data);
+				return {
+					response: "Desculpe, recebi uma resposta em formato inesperado do servidor.",
 					conversation_id: conversationId
-				});
-				
-				return response.data;
+				};
 			}
 		} catch (error) {
 			console.error(`Erro ao enviar mensagem:`, error);
