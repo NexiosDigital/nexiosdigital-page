@@ -11,8 +11,9 @@ import asyncio
 from datetime import datetime
 import logging
 
-# Configuração de logging
-logging.basicConfig(level=logging.INFO)
+# Configurar nível de log para DEBUG em vez de INFO
+logging.basicConfig(level=logging.DEBUG, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Verificar variáveis de ambiente críticas
@@ -146,38 +147,50 @@ def store_message(conversation_id: str, message: Dict[str, Any]):
 def get_conversation_history(conversation_id: str) -> List[Dict[str, Any]]:
     return conversation_store.get(conversation_id, [])
 
-# Rota WebSocket com tratamento de erros melhorado
+# Modificação na rota WebSocket para diagnóstico:
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    logger.debug(f"Nova tentativa de conexão WebSocket de cliente: {client_id}")
+    logger.debug(f"Headers da conexão: {websocket.headers}")
+    logger.debug(f"Parâmetros da solicitação: {websocket.query_params}")
+    
     try:
-        await manager.connect(websocket, client_id)
+        await websocket.accept()
         logger.info(f"WebSocket conectado para cliente {client_id}")
         
-        # Loop para manter a conexão ativa e processar mensagens
+        # Enviar mensagem de confirmação
+        await websocket.send_json({
+            "type": "connection_status",
+            "status": "connected",
+            "message": "Conexão WebSocket estabelecida com sucesso!"
+        })
+        
+        # Loop para manter a conexão ativa
         while True:
             try:
-                # Receber mensagem do cliente com timeout para evitar bloqueio indefinido
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=60.0)
-                logger.info(f"Mensagem recebida do cliente {client_id}: {data}")
+                data = await websocket.receive_text()
+                logger.debug(f"Recebido do cliente {client_id}: {data}")
                 
-                # Echo para confirmar conexão ativa
-                await websocket.send_json({"type": "connection_alive", "message": "Conexão ativa"})
+                # Simples resposta de eco para testar
+                await websocket.send_json({
+                    "type": "echo",
+                    "original": data,
+                    "timestamp": datetime.now().isoformat()
+                })
                 
-            except asyncio.TimeoutError:
-                # Ping para manter a conexão viva
-                try:
-                    await websocket.send_json({"type": "ping"})
-                    logger.debug(f"Ping enviado para cliente {client_id}")
-                except Exception as e:
-                    logger.error(f"Erro ao enviar ping para {client_id}: {str(e)}")
-                    raise WebSocketDisconnect()
-                    
+            except WebSocketDisconnect:
+                logger.info(f"Cliente {client_id} desconectou normalmente")
+                break
+            except Exception as e:
+                logger.error(f"Erro ao processar mensagem de {client_id}: {str(e)}")
+                break
+                
     except WebSocketDisconnect:
-        logger.info(f"WebSocket desconectado para cliente {client_id}")
-        manager.disconnect(websocket)
+        logger.warning(f"Cliente {client_id} desconectou durante o handshake")
     except Exception as e:
-        logger.error(f"Erro no WebSocket para cliente {client_id}: {str(e)}")
-        manager.disconnect(websocket)
+        logger.error(f"Erro ao aceitar conexão de {client_id}: {str(e)}", exc_info=True)
+        
+    logger.info(f"Conexão WebSocket encerrada para cliente {client_id}")
 
 # Rota para verificar status da API
 @app.get("/api/status")
