@@ -44,139 +44,48 @@ const AIChat = () => {
 
 	// Conectar ao WebSocket quando o componente montar
     useEffect(() => {
-        const clientId = getClientId();
-        const config = getEnvConfig();
-        let wsConnection = null;
-        let reconnectTimeout = null;
-        let reconnectAttempts = 0;
-        const MAX_RECONNECT_ATTEMPTS = 5;
+        // Para testes iniciais, vamos desativar a funcionalidade WebSocket
+        // e usar apenas a resposta direta da API
+        setConnectionStatus("disconnected");
         
-        const connectWebSocket = () => {
-            // Limpar qualquer timeout pendente
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-            }
-            
-            // Determine o protocolo correto (wss para https, ws para http)
+        // Função para teste de conexão WebSocket
+        const testWebSocket = () => {
+            const clientId = getClientId();
             const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            const wsEndpoint = `${wsProtocol}//${window.location.host}/ws/${clientId}`;
             
-            // Trate a conversão da URL corretamente
-            let wsUrl = config.apiUrl.replace(/^https?:\/\//, "");
+            console.log("Testando conexão WebSocket:", wsEndpoint);
             
-            // Se estamos em desenvolvimento, ajustar a porta 3000 para 8000
-            if (wsUrl.includes(":3000")) {
-                wsUrl = wsUrl.replace(":3000", ":8000");
-            }
-            
-            // Construa o endpoint WebSocket
-            const wsEndpoint = `${wsProtocol}//${wsUrl}/ws/${clientId}`;
-            
-            console.log("Tentando conectar ao WebSocket:", wsEndpoint);
-            setConnectionStatus("connecting");
-            
-            // Fechar conexão anterior se existir
-            if (wsConnection) {
-                wsConnection.close();
-            }
-            
-            // Criar nova conexão
-            wsConnection = new WebSocket(wsEndpoint);
-            
-            wsConnection.onopen = () => {
-                console.log("WebSocket conectado com sucesso!");
-                setConnectionStatus("connected");
-                setSocket(wsConnection);
-                reconnectAttempts = 0; // Reset counter on successful connection
-            };
-            
-            wsConnection.onmessage = (event) => {
-                console.log("Mensagem WebSocket recebida:", event.data);
-                try {
-                    const data = JSON.parse(event.data);
-                    
-                    // Ignore ping messages
-                    if (data.type === "ping") return;
-                    
-                    console.log("Dados WebSocket parseados:", data);
-                    
-                    // Verificar se é uma resposta de assistente
-                    if (data.type === "assistant_response") {
-                        console.log("Recebida resposta do assistente:", data);
-                        // Se tiver conversation_id, verificar se corresponde à conversa atual
-                        if (data.conversation_id && data.conversation_id === conversationId) {
-                            console.log("Adicionando mensagem à conversa atual");
-                            const assistantMessage = {
-                                role: "assistant",
-                                content: data.content,
-                            };
-                            setMessages((prev) => [...prev, assistantMessage]);
-                            setIsTyping(false);
-                        }
-                        // Se não tiver conversation_id ou se for uma transmissão geral
-                        else if (!data.conversation_id || data.type === "broadcast_message") {
-                            console.log("Mensagem de broadcast recebida");
-                            // Verificar se é uma resposta para a última mensagem enviada
-                            if (data.original_message === lastSentMessage) {
-                                console.log("Corresponde à última mensagem enviada");
-                                const assistantMessage = {
-                                    role: "assistant",
-                                    content: data.content,
-                                };
-                                setMessages((prev) => [...prev, assistantMessage]);
-                                setIsTyping(false);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error("Erro ao processar mensagem WebSocket:", error);
-                }
-            };
-            
-            wsConnection.onclose = (event) => {
-                console.log("WebSocket desconectado:", event);
-                setConnectionStatus("disconnected");
-                setSocket(null);
+            try {
+                const testWs = new WebSocket(wsEndpoint);
                 
-                // Tentar reconectar com delay exponencial, até máximo de tentativas
-                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // max 30 seconds
-                    console.log(`Tentando reconectar em ${delay/1000} segundos...`);
-                    reconnectAttempts++;
-                    reconnectTimeout = setTimeout(connectWebSocket, delay);
-                } else {
-                    console.log("Número máximo de tentativas de reconexão atingido");
-                }
-            };
-            
-            wsConnection.onerror = (error) => {
-                console.error("Erro no WebSocket:", error);
-                setConnectionStatus("error");
-            };
+                testWs.onopen = () => {
+                    console.log("Teste de WebSocket - Conexão estabelecida!");
+                    testWs.close();
+                };
+                
+                testWs.onerror = (error) => {
+                    console.error("Teste de WebSocket - Erro na conexão:", error);
+                };
+                
+                setTimeout(() => {
+                    if (testWs.readyState !== WebSocket.OPEN) {
+                        console.log("Teste de WebSocket - Timeout ao conectar");
+                        testWs.close();
+                    }
+                }, 5000);
+            } catch (error) {
+                console.error("Erro ao criar objeto WebSocket:", error);
+            }
         };
         
-        // Iniciar conexão
-        connectWebSocket();
+        // Execute o teste uma vez
+        testWebSocket();
         
-        // Função de ping para manter conexão ativa
-        const pingInterval = setInterval(() => {
-            if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
-                console.log("Enviando ping para manter conexão WebSocket");
-                wsConnection.send(JSON.stringify({ type: "ping" }));
-            }
-        }, 30000); // ping a cada 30 segundos
-        
-        // Limpar conexão quando o componente desmontar
         return () => {
-            clearInterval(pingInterval);
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-            }
-            if (wsConnection) {
-                console.log("Fechando conexão WebSocket");
-                wsConnection.close();
-            }
+            // Cleanup
         };
-    }, [conversationId, lastSentMessage]);
+    }, []);
 
 	// Efeito para ajustar o scroll quando as mensagens mudam
 	useEffect(() => {
@@ -223,77 +132,62 @@ const AIChat = () => {
 
 	// Manipulador para envio de mensagens
 	const handleSendMessage = async () => {
-		if (input.trim() === "" || isTyping) return;
+        if (input.trim() === "" || isTyping) return;
 
-		const userMessage = {
-			role: "user",
-			content: input,
-		};
+        const userMessage = {
+            role: "user",
+            content: input,
+        };
 
-		// Armazenar a mensagem que está sendo enviada
-		setLastSentMessage(input);
+        // Armazenar a mensagem que está sendo enviada
+        setLastSentMessage(input);
 
-		// Atualizar UI com a mensagem do usuário
-		setMessages((prev) => [...prev, userMessage]);
-		const currentInput = input;
-		setInput("");
-		setIsTyping(true);
+        // Atualizar UI com a mensagem do usuário
+        setMessages((prev) => [...prev, userMessage]);
+        const currentInput = input;
+        setInput("");
+        setIsTyping(true);
 
-		// Foco no input
-		chatInputRef.current?.focus();
+        // Foco no input
+        chatInputRef.current?.focus();
 
-		try {
-			// Preparar o histórico de conversas
-			const conversationHistory = messages.map((msg) => ({
-				role: msg.role,
-				content: msg.content,
-			}));
+        try {
+            // Preparar o histórico de conversas
+            const conversationHistory = messages.map((msg) => ({
+                role: msg.role,
+                content: msg.content,
+            }));
 
-			// Enviar a mensagem para o backend
-			const response = await sendMessage(currentInput, conversationHistory);
-			console.log("Resposta completa do sendMessage:", response);
+            // Enviar a mensagem para o backend
+            const response = await sendMessage(currentInput, conversationHistory);
+            console.log("Resposta recebida:", response);
 
-			// Se WebSocket não estiver conectado, mostrar a resposta direta
-			if (connectionStatus !== "connected") {
-				console.log("WebSocket não conectado - usando resposta direta");
-				const assistantMessage = {
-					role: "assistant",
-					content: response.response,
-				};
-				setMessages((prev) => [...prev, assistantMessage]);
-				setIsTyping(false);
-			} else {
-				console.log("Aguardando resposta via WebSocket...");
-				// Manter isTyping = true até que a resposta via WebSocket chegue
+            // Usar sempre a resposta direta da API até resolvermos os problemas de WebSocket
+            const assistantMessage = {
+                role: "assistant",
+                content: response.response,
+            };
+            setMessages((prev) => [...prev, assistantMessage]);
+            setIsTyping(false);
+            
+            // Salvar o ID da conversa se fornecido
+            if (response.conversation_id) {
+                setConversationId(response.conversation_id);
+            }
+        } catch (error) {
+            console.error("Erro ao processar mensagem:", error);
 
-				// Adicione um timeout de segurança para garantir que a UI não fique presa
-				// esperando resposta do WebSocket que não chegue
-				setTimeout(() => {
-					if (isTyping) {
-						console.log("Timeout do WebSocket - usando resposta direta");
-						const assistantMessage = {
-							role: "assistant",
-							content: response.response,
-						};
-						setMessages((prev) => [...prev, assistantMessage]);
-						setIsTyping(false);
-					}
-				}, 10000); // 10 segundos de timeout
-			}
-		} catch (error) {
-			console.error("Erro ao processar mensagem:", error);
+            // Mostrar mensagem de erro
+            const errorMessage = {
+                role: "assistant",
+                content:
+                    "Desculpe, tive um problema ao processar sua mensagem. Por favor, tente novamente mais tarde ou entre em contato com nosso suporte.",
+            };
 
-			// Mostrar mensagem de erro
-			const errorMessage = {
-				role: "assistant",
-				content:
-					"Desculpe, tive um problema ao processar sua mensagem. Por favor, tente novamente mais tarde ou entre em contato com nosso suporte.",
-			};
-
-			setMessages((prev) => [...prev, errorMessage]);
-			setIsTyping(false);
-		}
-	};
+            setMessages((prev) => [...prev, errorMessage]);
+            setIsTyping(false);
+        }
+    };
 
 	// Manipulador para tecla Enter
 	const handleKeyDown = (e) => {
@@ -329,7 +223,7 @@ const AIChat = () => {
 							</>
 						) : (
 							<>
-								<i className="fas fa-circle"></i> Desconectado
+								<i className="fas fa-circle"></i> Modo Offline
 							</>
 						)}
 					</div>
