@@ -9,6 +9,26 @@ import json
 import uuid
 import asyncio
 from datetime import datetime
+import logging
+
+# Configuração de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Verificar variáveis de ambiente críticas
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL")
+if not N8N_WEBHOOK_URL:
+    logger.error("N8N_WEBHOOK_URL não está configurada no ambiente")
+    raise ValueError("N8N_WEBHOOK_URL é obrigatória. Configure a variável de ambiente.")
+
+# Obter outras variáveis de ambiente
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
+N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "")
+
+# Verificar token de API
+if not N8N_API_TOKEN:
+    logger.warning("N8N_API_TOKEN não está configurado. Autenticação de callbacks pode falhar.")
 
 # Configuração da aplicação
 app = FastAPI(title="Nexios Digital API")
@@ -30,14 +50,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"]
 )
-
-# Obter chave API do ambiente
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID", None)
-# URL do webhook N8N - configurada para produção
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "https://webhook.nexiosdigital.com/webhook/nexios-chat-processor")
-# Token para autenticação de callbacks do N8N
-N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "seu_token_secreto_para_n8n")
 
 # Modelos para o chat
 class ChatMessage(BaseModel):
@@ -69,13 +81,13 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket, client_id: str):
         await websocket.accept()
         self.active_connections.append({"websocket": websocket, "client_id": client_id})
-        print(f"Cliente {client_id} conectado. Total de conexões: {len(self.active_connections)}")
+        logger.info(f"Cliente {client_id} conectado. Total de conexões: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         for connection in self.active_connections:
             if connection["websocket"] == websocket:
                 self.active_connections.remove(connection)
-                print(f"Cliente {connection['client_id']} desconectado. Total de conexões: {len(self.active_connections)}")
+                logger.info(f"Cliente {connection['client_id']} desconectado. Total de conexões: {len(self.active_connections)}")
                 break
 
     async def send_personal_message(self, message: Dict[str, Any], client_id: str):
@@ -85,7 +97,7 @@ class ConnectionManager:
                 break
 
     async def broadcast(self, message: Dict[str, Any]):
-        print(f"Broadcasting message to {len(self.active_connections)} connections: {message}")
+        logger.info(f"Broadcasting message to {len(self.active_connections)} connections: {message}")
         for connection in self.active_connections:
             await connection["websocket"].send_json(message)
 
@@ -93,31 +105,31 @@ manager = ConnectionManager()
 
 # Função para verificar autenticação para o endpoint N8N - Com depuração
 async def verify_token(authorization: Optional[str] = Header(None)):
-    print(f"Token recebido: {authorization}")
-    print(f"Token esperado: Bearer {N8N_API_TOKEN}")
+    logger.debug(f"Token recebido: {authorization}")
+    logger.debug(f"Token esperado: Bearer {N8N_API_TOKEN}")
     
     if not authorization:
-        print("Erro: Token de autorização ausente")
+        logger.error("Erro: Token de autorização ausente")
         raise HTTPException(status_code=401, detail="Token de autorização ausente")
     
     try:
         scheme, token = authorization.split()
-        print(f"Esquema: {scheme}, Token: {token}")
+        logger.debug(f"Esquema: {scheme}, Token: {token}")
         
         if scheme.lower() != "bearer":
-            print("Erro: Formato de autorização inválido")
+            logger.error("Erro: Formato de autorização inválido")
             raise HTTPException(status_code=401, detail="Formato de autorização inválido")
         
         # Comparar os tokens diretamente
-        print(f"Comparando token recebido '{token}' com token esperado '{N8N_API_TOKEN}'")
+        logger.debug(f"Comparando token recebido '{token}' com token esperado '{N8N_API_TOKEN}'")
         if token != N8N_API_TOKEN:
-            print("Erro: Token inválido")
+            logger.error("Erro: Token inválido")
             raise HTTPException(status_code=401, detail="Token inválido")
         
-        print("Token validado com sucesso!")
+        logger.info("Token validado com sucesso!")
         return token
     except ValueError:
-        print("Erro: Formato de autorização inválido (não conseguiu separar)")
+        logger.error("Erro: Formato de autorização inválido (não conseguiu separar)")
         raise HTTPException(status_code=401, detail="Formato de autorização inválido")
 
 # Função auxiliar para armazenar mensagens (pode ser substituída por uma implementação de BD)
@@ -143,7 +155,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             # Receber mensagem do cliente
             data = await websocket.receive_text()
             # Processar a mensagem, se necessário
-            print(f"Mensagem recebida do cliente {client_id}: {data}")
+            logger.info(f"Mensagem recebida do cliente {client_id}: {data}")
             
             # Se quiser processar a mensagem via WebSocket:
             # try:
@@ -206,13 +218,13 @@ async def chat(request: ChatRequest):
     """
     Endpoint simples de chat que usa a API OpenAI diretamente.
     """
-    print(f"Recebendo mensagem: {request.message}")
+    logger.info(f"Recebendo mensagem: {request.message}")
     
     # Gerar ou usar ID de conversa
     conversation_id = request.conversation_id or str(uuid.uuid4())
     
     if not OPENAI_API_KEY:
-        print("Erro: Chave API não configurada")
+        logger.error("Erro: Chave API não configurada")
         return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
     
     try:
@@ -252,7 +264,7 @@ async def chat(request: ChatRequest):
             "content": request.message
         })
         
-        print(f"Enviando {len(messages)} mensagens para OpenAI")
+        logger.info(f"Enviando {len(messages)} mensagens para OpenAI")
         
         # Fazer a chamada para a API
         response = client.chat.completions.create(
@@ -264,7 +276,7 @@ async def chat(request: ChatRequest):
         
         # Extrair resposta
         ai_response = response.choices[0].message.content
-        print(f"Resposta recebida: {ai_response[:50]}...")
+        logger.info(f"Resposta recebida: {ai_response[:50]}...")
         
         # Armazenar mensagens na conversa
         store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
@@ -273,7 +285,7 @@ async def chat(request: ChatRequest):
         return {"response": ai_response, "conversation_id": conversation_id}
     
     except Exception as e:
-        print(f"Erro ao processar mensagem: {str(e)}")
+        logger.error(f"Erro ao processar mensagem: {str(e)}")
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
 
 # Endpoint para chat com N8N
@@ -282,13 +294,13 @@ async def chat_n8n(request: ChatRequest):
     """
     Endpoint para chat que utiliza fluxo N8N para processar mensagens.
     """
-    print(f"Recebendo mensagem para N8N: {request.message}")
+    logger.info(f"Recebendo mensagem para N8N: {request.message}")
     
     # Gerar ou usar ID de conversa
     conversation_id = request.conversation_id or str(uuid.uuid4())
     
     if not N8N_WEBHOOK_URL:
-        print("Erro: URL do webhook N8N não configurada")
+        logger.error("Erro: URL do webhook N8N não configurada")
         return {"response": "Webhook N8N não configurado. Por favor, configure a variável de ambiente N8N_WEBHOOK_URL.", "conversation_id": conversation_id}
     
     try:
@@ -307,7 +319,7 @@ async def chat_n8n(request: ChatRequest):
             "token": N8N_API_TOKEN  # Enviar token para autenticação
         }
         
-        print(f"Enviando dados para N8N: {n8n_data}")
+        logger.info(f"Enviando dados para N8N: {n8n_data}")
         
         # Enviar para o webhook do N8N
         async with httpx.AsyncClient() as client:
@@ -319,12 +331,12 @@ async def chat_n8n(request: ChatRequest):
             
             if response.status_code != 200:
                 error_msg = f"Erro ao processar mensagem com N8N. Código: {response.status_code}"
-                print(error_msg)
+                logger.error(error_msg)
                 return {"response": error_msg, "conversation_id": conversation_id}
             
             # Processar resposta do N8N
             n8n_response = response.json()
-            print(f"Resposta recebida de N8N: {n8n_response}")
+            logger.info(f"Resposta recebida de N8N: {n8n_response}")
             
             # Extrair resposta do formato adequado
             if isinstance(n8n_response, dict) and "response" in n8n_response:
@@ -341,7 +353,7 @@ async def chat_n8n(request: ChatRequest):
                 
     except Exception as e:
         error_msg = f"Erro ao processar mensagem com N8N: {str(e)}"
-        print(error_msg)
+        logger.error(error_msg)
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
 
 # Endpoint para receber respostas do N8N
@@ -351,7 +363,7 @@ async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verif
     Endpoint para receber respostas processadas do N8N.
     Este endpoint é chamado pelo N8N após processar a mensagem.
     """
-    print(f"Recebendo callback do N8N: {n8n_data}")
+    logger.info(f"Recebendo callback do N8N: {n8n_data}")
     
     try:
         conversation_id = n8n_data.conversation_id
@@ -374,7 +386,7 @@ async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verif
                 "original_message": n8n_data.original_message,
                 "timestamp": n8n_data.timestamp or datetime.now().isoformat()
             }
-            print(f"Enviando mensagem WebSocket: {ws_message}")
+            logger.info(f"Enviando mensagem WebSocket: {ws_message}")
             await manager.broadcast(ws_message)
             
             return {
@@ -390,7 +402,7 @@ async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verif
                 "original_message": n8n_data.original_message,
                 "timestamp": n8n_data.timestamp or datetime.now().isoformat()
             }
-            print(f"Enviando broadcast WebSocket: {ws_message}")
+            logger.info(f"Enviando broadcast WebSocket: {ws_message}")
             await manager.broadcast(ws_message)
             
             return {
@@ -399,7 +411,7 @@ async def receive_n8n_response(n8n_data: N8nResponse, token: str = Depends(verif
             }
             
     except Exception as e:
-        print(f"Erro ao processar callback do N8N: {str(e)}")
+        logger.error(f"Erro ao processar callback do N8N: {str(e)}")
         return {
             "status": "error",
             "message": f"Erro ao processar resposta: {str(e)}"
@@ -425,5 +437,5 @@ async def root():
 # Iniciar o servidor
 if __name__ == "__main__":
     import uvicorn
-    print("Iniciando servidor Nexios Digital...")
+    logger.info("Iniciando servidor Nexios Digital...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
