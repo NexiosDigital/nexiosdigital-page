@@ -4,7 +4,7 @@
 
 ## Sobre o Projeto
 
-Nexios Digital é uma plataforma web moderna para uma empresa especializada em soluções de inteligência artificial que transformam processos de negócios. O site apresenta os serviços oferecidos, incluindo agentes de IA para atendimento ao cliente, automação de vendas, automação de processos e integração com ClickUp, além de um assistente virtual de IA demonstrativo.
+Nexios Digital é uma plataforma web moderna para uma empresa especializada em soluções de inteligência artificial que transformam processos de negócios. O site apresenta os serviços oferecidos, incluindo agentes de IA para atendimento ao cliente, automação de vendas, automação de processos e integração com ClickUp, além de um assistente virtual de IA demonstrativo .
 
 ## Tecnologias Utilizadas
 
