@@ -17,6 +17,7 @@ const AIChat = () => {
 	const [conversationId, setConversationId] = useState(null);
 	const [lastSentMessage, setLastSentMessage] = useState("");
 	const [connectionStatus, setConnectionStatus] = useState("offline");
+	const [apiError, setApiError] = useState(null);
 
 	// Referências
 	const messagesEndRef = useRef(null);
@@ -30,17 +31,46 @@ const AIChat = () => {
 		}
 	}, [messages]);
 
-	// Função modificada para usar o endpoint de fallback
+	// Função para verificar o status da API ao carregar o componente
+	useEffect(() => {
+		const checkApiStatus = async () => {
+			try {
+				const response = await axios.get(
+					"http://www.nexiosdigital.com:8000/api/status",
+					{
+						headers: {
+							"Content-Type": "application/json",
+						},
+					}
+				);
+
+				if (response.status === 200) {
+					setConnectionStatus("connected");
+					setApiError(null);
+				}
+			} catch (error) {
+				console.error("Erro ao verificar status da API:", error);
+				setConnectionStatus("error");
+				setApiError(
+					"Não foi possível conectar ao servidor da IA. Tente novamente mais tarde."
+				);
+			}
+		};
+
+		checkApiStatus();
+	}, []);
+
+	// Enviar mensagem com tratamento de segurança aprimorado
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
 
-			// Usar o endpoint de fallback em vez do endpoint normal
-			// MODIFICADO: Usando o endpoint chat-direct em vez de chat
-			const apiUrl = "/api/chat-direct";
+			// Usando o endpoint completo com validação de origem
+			const apiUrl = "http://www.nexiosdigital.com:8000/api/chat";
 
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
 
+			// Criar cliente axios com configurações específicas para esta chamada
 			const response = await axios.post(
 				apiUrl,
 				{
@@ -54,7 +84,11 @@ const AIChat = () => {
 				{
 					headers: {
 						"Content-Type": "application/json",
+						Origin: window.location.origin,
+						"X-Requested-With": "XMLHttpRequest",
 					},
+					// Não enviar cookies com a solicitação para reduzir riscos
+					withCredentials: false,
 				}
 			);
 
@@ -161,10 +195,22 @@ const AIChat = () => {
 					{/* Indicador de status */}
 					<div className={`websocket-status ${connectionStatus}`}>
 						<>
-							<i className="fas fa-circle"></i> Modo Offline
+							<i className="fas fa-circle"></i>
+							{connectionStatus === "connected"
+								? "Conectado"
+								: connectionStatus === "error"
+								? "Erro de Conexão"
+								: "Modo Offline"}
 						</>
 					</div>
 				</div>
+
+				{apiError && (
+					<div className="api-error-message">
+						<i className="fas fa-exclamation-triangle"></i>
+						<p>{apiError}</p>
+					</div>
+				)}
 
 				<div className="chat-container">
 					<div className="chat-messages" ref={chatMessagesRef}>
@@ -193,12 +239,14 @@ const AIChat = () => {
 							onChange={(e) => setInput(e.target.value)}
 							onKeyDown={handleKeyDown}
 							placeholder="Digite sua mensagem..."
-							disabled={isTyping}
+							disabled={isTyping || connectionStatus === "error"}
 						/>
 						<button
 							className="chat-send-btn"
 							onClick={handleSendMessage}
-							disabled={isTyping || input.trim() === ""}
+							disabled={
+								isTyping || input.trim() === "" || connectionStatus === "error"
+							}
 						>
 							<i className="fas fa-paper-plane"></i>
 						</button>
