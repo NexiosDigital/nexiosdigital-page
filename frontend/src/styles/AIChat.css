@@ -805,3 +805,27 @@
 .websocket-status.connected i {
   animation: pulse-connected 2s infinite;
 }
+
+/* WebSocket Status Indicator - adicionar status "conectando" */
+.websocket-status.connecting {
+  background-color: rgba(255, 206, 49, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(255, 206, 49, 0.3);
+  animation: pulse-connecting 1.5s infinite;
+}
+
+@keyframes pulse-connecting {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Melhore a visibilidade dos indicadores de status */
+.websocket-status {
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+}
+
+.websocket-status i {
+  margin-right: 0.5rem;
+}
