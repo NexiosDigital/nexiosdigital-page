@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL")
 if not N8N_WEBHOOK_URL:
     logger.warning("N8N_WEBHOOK_URL não está configurada no ambiente")
-    # Comentado para evitar falha na inicialização
-    # raise ValueError("N8N_WEBHOOK_URL é obrigatória. Configure a variável de ambiente.")
+    # Use a URL padrão do webhook se não estiver definida
     N8N_WEBHOOK_URL = "https://webhook.nexiosdigital.com/webhook/nexios-chat-processor"
     logger.warning(f"Usando URL padrão para webhook N8N: {N8N_WEBHOOK_URL}")
 
@@ -46,7 +45,7 @@ async def startup_event():
     
     print("========================")
 
-# Configuração do CORS - com domínios específicos para produção
+# Configuração do CORS - com domínios específicos para produção e todos os cabeçalhos permitidos
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -56,7 +55,8 @@ app.add_middleware(
         "http://www.nexiosdigital.com",
         # Para desenvolvimento
         "http://localhost:3000",
-        "http://localhost:8000"
+        "http://localhost:8000",
+        "*"  # Permite todas as origens em desenvolvimento (remover em produção)
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -262,85 +262,6 @@ async def root():
         "environment": os.getenv("ENVIRONMENT", "development")
     }
 
-# Rota de chat simples usando OpenAI
-@app.post("/api/chat")
-async def chat(request: ChatRequest):
-    """
-    Endpoint simples de chat que usa a API OpenAI diretamente.
-    """
-    logger.info(f"Recebendo mensagem: {request.message}")
-    
-    # Log completo do request para debug
-    logger.debug(f"Request completo: {request}")
-    
-    # Gerar ou usar ID de conversa
-    conversation_id = request.conversation_id or str(uuid.uuid4())
-    
-    if not OPENAI_API_KEY:
-        logger.error("Erro: Chave API não configurada")
-        return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
-    
-    try:
-        # Criar cliente OpenAI
-        if OPENAI_ORG_ID:
-            client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)
-        else:
-            client = OpenAI(api_key=OPENAI_API_KEY)
-        
-        # Preparar mensagens para a API
-        messages = []
-        
-        # Adicionar mensagem de sistema (contexto para a IA)
-        messages.append({
-            "role": "system", 
-            "content": """
-            Você é o assistente virtual da Nexios Digital, uma empresa de soluções de inteligência artificial.
-            Forneça informações sobre nossos serviços:
-            1. Agentes de IA para atendimento ao cliente
-            2. Automação de vendas e processos
-            3. Consultoria em implementação de IA
-            
-            Seja profissional, amigável e conciso nas suas respostas.
-            """
-        })
-        
-        # Adicionar histórico de conversa (se existir)
-        for message in request.conversation_history:
-            messages.append({
-                "role": message.role,
-                "content": message.content
-            })
-        
-        # Adicionar a mensagem atual do usuário
-        messages.append({
-            "role": "user",
-            "content": request.message
-        })
-        
-        logger.info(f"Enviando {len(messages)} mensagens para OpenAI")
-        
-        # Fazer a chamada para a API
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Modelo mais econômico e rápido
-            messages=messages,
-            temperature=0.7,
-            max_tokens=800
-        )
-        
-        # Extrair resposta
-        ai_response = response.choices[0].message.content
-        logger.info(f"Resposta recebida: {ai_response[:50]}...")
-        
-        # Armazenar mensagens na conversa
-        store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
-        store_message(conversation_id, {"role": "assistant", "content": ai_response, "timestamp": datetime.now().isoformat()})
-        
-        return {"response": ai_response, "conversation_id": conversation_id}
-    
-    except Exception as e:
-        logger.error(f"Erro ao processar mensagem: {str(e)}")
-        return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
-
 # Endpoint para enviar mensagens para o N8N
 @app.post("/api/chat-n8n")
 async def chat_n8n(request: ChatRequest):
@@ -469,3 +390,82 @@ async def n8n_callback(data: N8nResponse, token: str = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Erro ao processar callback do N8N: {str(e)}")
         return {"error": str(e)}
+
+# Rota de chat simples usando OpenAI
+@app.post("/api/chat")
+async def chat(request: ChatRequest):
+    """
+    Endpoint simples de chat que usa a API OpenAI diretamente.
+    """
+    logger.info(f"Recebendo mensagem: {request.message}")
+    
+    # Log completo do request para debug
+    logger.debug(f"Request completo: {request}")
+    
+    # Gerar ou usar ID de conversa
+    conversation_id = request.conversation_id or str(uuid.uuid4())
+    
+    if not OPENAI_API_KEY:
+        logger.error("Erro: Chave API não configurada")
+        return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
+    
+    try:
+        # Criar cliente OpenAI
+        if OPENAI_ORG_ID:
+            client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)
+        else:
+            client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        # Preparar mensagens para a API
+        messages = []
+        
+        # Adicionar mensagem de sistema (contexto para a IA)
+        messages.append({
+            "role": "system", 
+            "content": """
+            Você é o assistente virtual da Nexios Digital, uma empresa de soluções de inteligência artificial.
+            Forneça informações sobre nossos serviços:
+            1. Agentes de IA para atendimento ao cliente
+            2. Automação de vendas e processos
+            3. Consultoria em implementação de IA
+            
+            Seja profissional, amigável e conciso nas suas respostas.
+            """
+        })
+        
+        # Adicionar histórico de conversa (se existir)
+        for message in request.conversation_history:
+            messages.append({
+                "role": message.role,
+                "content": message.content
+            })
+        
+        # Adicionar a mensagem atual do usuário
+        messages.append({
+            "role": "user",
+            "content": request.message
+        })
+        
+        logger.info(f"Enviando {len(messages)} mensagens para OpenAI")
+        
+        # Fazer a chamada para a API
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",  # Modelo mais econômico e rápido
+            messages=messages,
+            temperature=0.7,
+            max_tokens=800
+        )
+        
+        # Extrair resposta
+        ai_response = response.choices[0].message.content
+        logger.info(f"Resposta recebida: {ai_response[:50]}...")
+        
+        # Armazenar mensagens na conversa
+        store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
+        store_message(conversation_id, {"role": "assistant", "content": ai_response, "timestamp": datetime.now().isoformat()})
+        
+        return {"response": ai_response, "conversation_id": conversation_id}
+    
+    except Exception as e:
+        logger.error(f"Erro ao processar mensagem: {str(e)}")
+        return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}

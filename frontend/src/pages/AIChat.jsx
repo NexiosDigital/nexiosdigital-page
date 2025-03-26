@@ -72,7 +72,7 @@ const AIChat = () => {
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
 
 			// Criar cliente axios com configurações específicas para esta chamada
-			// Removido o cabeçalho Origin que estava causando o erro CORS
+			// Removido o cabeçalho X-Requested-With que estava causando o erro CORS
 			const response = await axios.post(
 				apiUrl,
 				{
@@ -86,7 +86,6 @@ const AIChat = () => {
 				{
 					headers: {
 						"Content-Type": "application/json",
-						"X-Requested-With": "XMLHttpRequest",
 					},
 					// Não enviar cookies com a solicitação para reduzir riscos
 					withCredentials: false,
