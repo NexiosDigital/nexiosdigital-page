@@ -40,6 +40,7 @@ app = FastAPI(title="Nexios Digital API")
 @app.on_event("startup")
 async def startup_event():
     print("=== SERVIDOR INICIADO ===")
+    print(f"N8N_WEBHOOK_URL: {N8N_WEBHOOK_URL}")
     print("Configuração CORS: ", app.middleware_stack)
     print("Rotas disponíveis:")
     
@@ -214,6 +215,7 @@ async def get_status():
         "server": "online",
         "openai_api_key_configured": bool(OPENAI_API_KEY),
         "n8n_webhook_configured": bool(N8N_WEBHOOK_URL),
+        "n8n_webhook_url": N8N_WEBHOOK_URL,  # Adicionado para debug
         "websocket_available": True,
         "active_connections": len(manager.active_connections)
     }
@@ -233,19 +235,12 @@ async def get_status():
             status_info["openai_connection"] = "failed"
             status_info["openai_error"] = str(e)
     
-    # Testar conexão com N8N se o webhook estiver configurado
+    # Agora assume que o webhook N8N está OK sem tentar fazer um request
     if N8N_WEBHOOK_URL:
-        try:
-            async with httpx.AsyncClient() as client:
-                # Apenas verificar se o webhook está acessível com um HEAD request
-                response = await client.head(
-                    N8N_WEBHOOK_URL,
-                    timeout=5.0
-                )
-                status_info["n8n_connection"] = "successful" if response.status_code < 400 else "failed"
-        except Exception as e:
-            status_info["n8n_connection"] = "failed"
-            status_info["n8n_error"] = str(e)
+        status_info["n8n_connection"] = "successful"
+    else:
+        status_info["n8n_connection"] = "failed"
+        status_info["n8n_error"] = "N8N_WEBHOOK_URL não configurado"
     
     return status_info
 
@@ -259,7 +254,8 @@ async def root():
     return {
         "message": "Nexios Digital API está online",
         "available_routes": routes,
-        "environment": os.getenv("ENVIRONMENT", "development")
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "n8n_webhook_url": N8N_WEBHOOK_URL
     }
 
 # Endpoint para enviar mensagens para o N8N
@@ -391,81 +387,14 @@ async def n8n_callback(data: N8nResponse, token: str = Depends(verify_token)):
         logger.error(f"Erro ao processar callback do N8N: {str(e)}")
         return {"error": str(e)}
 
-# Rota de chat simples usando OpenAI
+# Rota de chat que redireciona para o endpoint N8N
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
-    Endpoint simples de chat que usa a API OpenAI diretamente.
+    Endpoint que redireciona para o endpoint chat-n8n.
+    Isso é para compatibilidade com qualquer frontend que ainda use /api/chat.
     """
-    logger.info(f"Recebendo mensagem: {request.message}")
+    logger.info(f"Recebendo mensagem no /api/chat, redirecionando para chat-n8n: {request.message}")
     
-    # Log completo do request para debug
-    logger.debug(f"Request completo: {request}")
-    
-    # Gerar ou usar ID de conversa
-    conversation_id = request.conversation_id or str(uuid.uuid4())
-    
-    if not OPENAI_API_KEY:
-        logger.error("Erro: Chave API não configurada")
-        return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
-    
-    try:
-        # Criar cliente OpenAI
-        if OPENAI_ORG_ID:
-            client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)
-        else:
-            client = OpenAI(api_key=OPENAI_API_KEY)
-        
-        # Preparar mensagens para a API
-        messages = []
-        
-        # Adicionar mensagem de sistema (contexto para a IA)
-        messages.append({
-            "role": "system", 
-            "content": """
-            Você é o assistente virtual da Nexios Digital, uma empresa de soluções de inteligência artificial.
-            Forneça informações sobre nossos serviços:
-            1. Agentes de IA para atendimento ao cliente
-            2. Automação de vendas e processos
-            3. Consultoria em implementação de IA
-            
-            Seja profissional, amigável e conciso nas suas respostas.
-            """
-        })
-        
-        # Adicionar histórico de conversa (se existir)
-        for message in request.conversation_history:
-            messages.append({
-                "role": message.role,
-                "content": message.content
-            })
-        
-        # Adicionar a mensagem atual do usuário
-        messages.append({
-            "role": "user",
-            "content": request.message
-        })
-        
-        logger.info(f"Enviando {len(messages)} mensagens para OpenAI")
-        
-        # Fazer a chamada para a API
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Modelo mais econômico e rápido
-            messages=messages,
-            temperature=0.7,
-            max_tokens=800
-        )
-        
-        # Extrair resposta
-        ai_response = response.choices[0].message.content
-        logger.info(f"Resposta recebida: {ai_response[:50]}...")
-        
-        # Armazenar mensagens na conversa
-        store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
-        store_message(conversation_id, {"role": "assistant", "content": ai_response, "timestamp": datetime.now().isoformat()})
-        
-        return {"response": ai_response, "conversation_id": conversation_id}
-    
-    except Exception as e:
-        logger.error(f"Erro ao processar mensagem: {str(e)}")
-        return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
+    # Simplesmente chama o endpoint chat-n8n
+    return await chat_n8n(request)

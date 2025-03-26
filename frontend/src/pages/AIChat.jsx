@@ -38,11 +38,14 @@ const AIChat = () => {
 	useEffect(() => {
 		const checkApiStatus = async () => {
 			try {
+				console.log("Verificando status da API...");
 				const response = await axios.get(`${API_URL}/api/status`, {
 					headers: {
 						"Content-Type": "application/json",
 					},
 				});
+
+				console.log("Resposta da verificação de status:", response.data);
 
 				if (response.status === 200) {
 					setConnectionStatus("connected");
@@ -58,15 +61,14 @@ const AIChat = () => {
 		};
 
 		checkApiStatus();
-	}, []);
+	}, [API_URL]);
 
 	// Enviar mensagem com tratamento de segurança aprimorado
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
 
-			// Usando o endpoint completo com validação de origem
-			// Mudado para usar o endpoint chat-n8n que utiliza o webhook do N8N
+			// IMPORTANTE: Usando SEMPRE o endpoint chat-n8n que utiliza o webhook do N8N
 			const apiUrl = `${API_URL}/api/chat-n8n`;
 
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
