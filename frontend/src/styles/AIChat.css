@@ -829,3 +829,83 @@
 .websocket-status i {
   margin-right: 0.5rem;
 }
+
+/* Adicionar ao AIChat.css */
+.status-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.conversation-info {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.refresh-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover {
+  color: var(--accent);
+  transform: rotate(180deg);
+}
+
+.polling-indicator {
+  font-size: 0.85rem;
+  color: var(--warning);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.message.temporary {
+  opacity: 0.7;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.message-loader {
+  display: inline-flex;
+  margin-left: 10px;
+  gap: 4px;
+}
+
+.message-loader span {
+  width: 6px;
+  height: 6px;
+  background-color: var(--text-secondary);
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 1s infinite;
+}
+
+.message-loader span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.message-loader span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@media (max-width: 768px) {
+  .status-container {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+}

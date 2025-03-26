@@ -10,34 +10,43 @@ import uuid
 import asyncio
 from datetime import datetime
 import logging
-from collections import deque
 
-# Configurar nível de log para DEBUG
+# Configurar nível de log para DEBUG em vez de INFO
 logging.basicConfig(level=logging.DEBUG, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configurações de ambiente
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "https://webhook.nexiosdigital.com/webhook/nexios-chat-processor")
+# Verificar variáveis de ambiente críticas
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL")
+if not N8N_WEBHOOK_URL:
+    logger.warning("N8N_WEBHOOK_URL não está configurada no ambiente")
+    # Use a URL padrão do webhook se não estiver definida
+    N8N_WEBHOOK_URL = "https://webhook.nexiosdigital.com/webhook/nexios-chat-processor"
+    logger.warning(f"Usando URL padrão para webhook N8N: {N8N_WEBHOOK_URL}")
+
+# Obter outras variáveis de ambiente
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
 N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "dasdaksmda")
 
-# Aviso se token não estiver configurado
+# Verificar token de API
 if not N8N_API_TOKEN:
     logger.warning("N8N_API_TOKEN não está configurado. Autenticação de callbacks pode falhar.")
 
-# Inicialização da aplicação
+# Configuração da aplicação
 app = FastAPI(title="Nexios Digital API")
 
-# Evento de inicialização
+# ADICIONADO: Evento de inicialização para DEBUG
 @app.on_event("startup")
 async def startup_event():
-    logger.info("=== SERVIDOR INICIADO ===")
-    logger.info(f"N8N_WEBHOOK_URL: {N8N_WEBHOOK_URL}")
-    logger.info("========================")
+    print("=== SERVIDOR INICIADO ===")
+    print(f"N8N_WEBHOOK_URL: {N8N_WEBHOOK_URL}")
+    print("Configuração CORS: ", app.middleware_stack)
+    print("Rotas disponíveis:")
+    
+    print("========================")
 
-# Configuração CORS
+# Configuração do CORS - com domínios específicos para produção e todos os cabeçalhos permitidos
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -45,9 +54,10 @@ app.add_middleware(
         "https://www.nexiosdigital.com", 
         "http://nexiosdigital.com",
         "http://www.nexiosdigital.com",
+        # Para desenvolvimento
         "http://localhost:3000",
         "http://localhost:8000",
-        "*"
+        "*"  # Permite todas as origens em desenvolvimento (remover em produção)
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -55,7 +65,7 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-# Modelos de dados
+# Modelos para o chat
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -68,7 +78,9 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     conversation_id: Optional[str] = None
+    status: Optional[str] = None
 
+# Modelo para receber respostas do N8N
 class N8nResponse(BaseModel):
     conversation_id: Optional[str] = None
     original_message: str
@@ -76,200 +88,116 @@ class N8nResponse(BaseModel):
     timestamp: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
-# Nova classe para gerenciar mensagens pendentes e conexões WebSocket
-class ChatManager:
+# Gerenciador de WebSockets
+class ConnectionManager:
     def __init__(self):
-        # Conexões WebSocket ativas - {client_id: WebSocket}
-        self.connections = {}
-        
-        # Histórico de conversas - {conversation_id: [mensagens]}
-        self.conversation_history = {}
-        
-        # Mensagens pendentes para entrega - {conversation_id: [mensagens]}
-        self.pending_messages = {}
-        
-        # Informação sobre a última atividade (timestamp) - {client_id: timestamp}
-        self.last_activity = {}
-        
-        # Mapeamento entre client_id e conversation_id (pode ser diferente) - {client_id: conversation_id}
-        self.client_conversation_map = {}
+        self.active_connections: List[Dict[str, Any]] = []
 
     async def connect(self, websocket: WebSocket, client_id: str):
-        """Registra uma nova conexão WebSocket"""
         await websocket.accept()
-        self.connections[client_id] = websocket
-        self.last_activity[client_id] = datetime.now()
-        logger.info(f"WebSocket conectado para cliente {client_id}. Total: {len(self.connections)}")
-        
-        # Enviar confirmação de conexão
-        await websocket.send_json({
-            "type": "connection_status",
-            "status": "connected",
-            "message": f"Conexão WebSocket estabelecida. ID: {client_id}"
-        })
-        
-        # Verificar se há mensagens pendentes para este cliente
-        await self.deliver_pending_messages(client_id)
+        self.active_connections.append({"websocket": websocket, "client_id": client_id})
+        logger.info(f"Cliente {client_id} conectado. Total de conexões: {len(self.active_connections)}")
 
-    def disconnect(self, client_id: str):
-        """Remove uma conexão WebSocket"""
-        if client_id in self.connections:
-            del self.connections[client_id]
-            logger.info(f"Cliente {client_id} desconectado. Total restante: {len(self.connections)}")
-            
-            # Manter o mapeamento client_id -> conversation_id para reconexões futuras
-            # Não removemos do client_conversation_map propositalmente
+    def disconnect(self, websocket: WebSocket):
+        for connection in self.active_connections:
+            if connection["websocket"] == websocket:
+                self.active_connections.remove(connection)
+                logger.info(f"Cliente {connection['client_id']} desconectado. Total de conexões: {len(self.active_connections)}")
+                break
 
-    def associate_conversation(self, client_id: str, conversation_id: str):
-        """Associa um client_id a um conversation_id"""
-        logger.info(f"Associando client_id {client_id} com conversation_id {conversation_id}")
-        self.client_conversation_map[client_id] = conversation_id
-        
-        # Se este cliente já estiver conectado, verificar mensagens pendentes
-        if client_id in self.connections:
-            asyncio.create_task(self.deliver_pending_messages(client_id))
+    async def send_personal_message(self, message: Dict[str, Any], client_id: str):
+        for connection in self.active_connections:
+            if connection["client_id"] == client_id:
+                await connection["websocket"].send_json(message)
+                break
 
-    def add_message(self, conversation_id: str, message: Dict[str, Any]):
-        """Adiciona uma mensagem ao histórico e à fila de pendentes"""
-        # Adicionar ao histórico
-        if conversation_id not in self.conversation_history:
-            self.conversation_history[conversation_id] = []
-        self.conversation_history[conversation_id].append(message)
-        
-        # Limitar o tamanho do histórico
-        if len(self.conversation_history[conversation_id]) > 50:
-            self.conversation_history[conversation_id] = self.conversation_history[conversation_id][-50:]
-        
-        # Adicionar à fila de pendentes
-        if conversation_id not in self.pending_messages:
-            self.pending_messages[conversation_id] = []
-        self.pending_messages[conversation_id].append(message)
-        
-        # Tentar entregar a todos os clientes associados a esta conversa
-        clients_to_deliver = []
-        for client_id, conv_id in self.client_conversation_map.items():
-            if conv_id == conversation_id and client_id in self.connections:
-                clients_to_deliver.append(client_id)
-        
-        # Criar tarefas assíncronas para entrega
-        for client_id in clients_to_deliver:
-            asyncio.create_task(self.deliver_pending_messages(client_id))
+    async def broadcast(self, message: Dict[str, Any]):
+        logger.info(f"Broadcasting message to {len(self.active_connections)} connections: {message}")
+        for connection in self.active_connections:
+            await connection["websocket"].send_json(message)
 
-    async def deliver_pending_messages(self, client_id: str):
-        """Tenta entregar mensagens pendentes para um cliente específico"""
-        # Verificar se o cliente tem um conversation_id associado
-        if client_id not in self.client_conversation_map:
-            logger.warning(f"Cliente {client_id} não tem conversation_id associado")
-            return
-        
-        conversation_id = self.client_conversation_map[client_id]
-        
-        # Verificar se há mensagens pendentes para esta conversa
-        if conversation_id not in self.pending_messages or not self.pending_messages[conversation_id]:
-            logger.debug(f"Nenhuma mensagem pendente para conversa {conversation_id}")
-            return
-        
-        # Verificar se o cliente está conectado
-        if client_id not in self.connections:
-            logger.warning(f"Cliente {client_id} não está conectado, não é possível entregar mensagens")
-            return
-        
-        websocket = self.connections[client_id]
-        messages_delivered = 0
-        
-        try:
-            # Entregar todas as mensagens pendentes
-            for message in list(self.pending_messages[conversation_id]):
-                await websocket.send_json({
-                    "type": "message",
-                    "content": message["content"],
-                    "role": message.get("role", "assistant"),
-                    "timestamp": message.get("timestamp", datetime.now().isoformat())
-                })
-                messages_delivered += 1
-                
-                # Remover esta mensagem da fila pendente
-                self.pending_messages[conversation_id].remove(message)
-            
-            logger.info(f"Entregues {messages_delivered} mensagens pendentes para cliente {client_id}")
-        except Exception as e:
-            logger.error(f"Erro ao entregar mensagens pendentes para {client_id}: {str(e)}")
-            self.disconnect(client_id)
-    
-    def get_history(self, conversation_id: str) -> List[Dict[str, Any]]:
-        """Retorna o histórico de mensagens para uma conversa"""
-        return self.conversation_history.get(conversation_id, [])
+manager = ConnectionManager()
 
-    def get_client_by_conversation(self, conversation_id: str) -> Optional[str]:
-        """Encontra o client_id associado a uma conversation_id"""
-        for client_id, conv_id in self.client_conversation_map.items():
-            if conv_id == conversation_id:
-                return client_id
-        return None
-
-    def list_active_connections(self):
-        """Lista todas as conexões ativas para depuração"""
-        return {
-            "active_connections": len(self.connections),
-            "client_ids": list(self.connections.keys()),
-            "conversation_mappings": self.client_conversation_map,
-            "pending_message_counts": {conv_id: len(msgs) for conv_id, msgs in self.pending_messages.items()}
-        }
-
-# Instanciar o gerenciador de chat
-chat_manager = ChatManager()
-
-# Função para verificar autenticação para o endpoint N8N
+# Função para verificar autenticação para o endpoint N8N - Com depuração
 async def verify_token(authorization: Optional[str] = Header(None)):
+    logger.debug(f"Token recebido: {authorization}")
+    logger.debug(f"Token esperado: Bearer {N8N_API_TOKEN}")
+    
     if not authorization:
-        logger.error("Token de autorização ausente")
+        logger.error("Erro: Token de autorização ausente")
         raise HTTPException(status_code=401, detail="Token de autorização ausente")
     
     try:
         scheme, token = authorization.split()
+        logger.debug(f"Esquema: {scheme}, Token: {token}")
         
         if scheme.lower() != "bearer":
-            logger.error("Formato de autorização inválido")
+            logger.error("Erro: Formato de autorização inválido")
             raise HTTPException(status_code=401, detail="Formato de autorização inválido")
         
+        # Comparar os tokens diretamente
+        logger.debug(f"Comparando token recebido '{token}' com token esperado '{N8N_API_TOKEN}'")
         if token != N8N_API_TOKEN:
-            logger.error("Token inválido")
+            logger.error("Erro: Token inválido")
             raise HTTPException(status_code=401, detail="Token inválido")
         
+        logger.info("Token validado com sucesso!")
         return token
     except ValueError:
-        logger.error("Formato de autorização inválido (não conseguiu separar)")
+        logger.error("Erro: Formato de autorização inválido (não conseguiu separar)")
         raise HTTPException(status_code=401, detail="Formato de autorização inválido")
 
-# Endpoint WebSocket melhorado
+# Função auxiliar para armazenar mensagens (pode ser substituída por uma implementação de BD)
+conversation_store = {}
+
+def store_message(conversation_id: str, message: Dict[str, Any]):
+    if conversation_id not in conversation_store:
+        conversation_store[conversation_id] = []
+    conversation_store[conversation_id].append(message)
+    # Limitar o tamanho do histórico, se necessário
+    if len(conversation_store[conversation_id]) > 50:
+        conversation_store[conversation_id] = conversation_store[conversation_id][-50:]
+
+def get_conversation_history(conversation_id: str) -> List[Dict[str, Any]]:
+    return conversation_store.get(conversation_id, [])
+
+# Endpoint WebSocket para diagnóstico
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    logger.debug(f"Nova tentativa de conexão WebSocket de cliente: {client_id}")
+    logger.debug(f"Headers da conexão: {websocket.headers}")
+    logger.debug(f"Parâmetros da solicitação: {websocket.query_params}")
+    
     try:
-        # Registrar no gerenciador de chat
-        await chat_manager.connect(websocket, client_id)
+        await manager.connect(websocket, client_id)
         
-        # Manter a conexão aberta para receber mensagens
+        # Enviar mensagem de confirmação
+        await websocket.send_json({
+            "type": "connection_status",
+            "status": "connected",
+            "message": "Conexão WebSocket estabelecida com sucesso!"
+        })
+        
+        # Loop para manter a conexão ativa
         while True:
             try:
-                # Esperar mensagens do cliente
                 data = await websocket.receive_text()
+                logger.debug(f"Recebido do cliente {client_id}: {data}")
                 
                 try:
-                    # Tentar processar o JSON recebido
-                    data_json = json.loads(data)
-                    
-                    # Se a mensagem contém um conversation_id, fazer a associação
-                    if "conversation_id" in data_json:
-                        chat_manager.associate_conversation(client_id, data_json["conversation_id"])
+                    # Tentar processar como JSON para verificar se contém conversation_id
+                    json_data = json.loads(data)
+                    if 'conversation_id' in json_data:
+                        logger.info(f"Cliente {client_id} associado à conversa {json_data['conversation_id']}")
                         await websocket.send_json({
-                            "type": "association_success", 
-                            "message": f"ID de conversa registrado: {data_json['conversation_id']}"
+                            "type": "association_success",
+                            "message": f"Associado à conversa: {json_data['conversation_id']}"
                         })
-                except json.JSONDecodeError:
-                    # Se não for um JSON válido, apenas responder com eco
+                except:
+                    # Se não for JSON, enviar eco simples
                     await websocket.send_json({
                         "type": "echo",
-                        "message": data,
+                        "original": data,
                         "timestamp": datetime.now().isoformat()
                     })
                 
@@ -277,28 +205,41 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 logger.info(f"Cliente {client_id} desconectou normalmente")
                 break
             except Exception as e:
-                logger.error(f"Erro ao processar mensagem do cliente {client_id}: {str(e)}")
+                logger.error(f"Erro ao processar mensagem de {client_id}: {str(e)}")
                 break
-    
+                
+    except WebSocketDisconnect:
+        logger.warning(f"Cliente {client_id} desconectou durante o handshake")
     except Exception as e:
-        logger.error(f"Erro ao configurar WebSocket para cliente {client_id}: {str(e)}")
+        logger.error(f"Erro ao aceitar conexão de {client_id}: {str(e)}", exc_info=True)
     
-    # Desconectar o cliente no final
-    chat_manager.disconnect(client_id)
+    # Desconectar do gerenciador quando terminar
+    manager.disconnect(websocket)
+    logger.info(f"Conexão WebSocket encerrada para cliente {client_id}")
 
 # Rota para verificar status da API
 @app.get("/api/status")
 async def get_status():
+    """
+    Verifica e retorna o status do servidor e da conexão com a API OpenAI.
+    """
     status_info = {
         "server": "online",
         "openai_api_key_configured": bool(OPENAI_API_KEY),
         "n8n_webhook_configured": bool(N8N_WEBHOOK_URL),
-        "websocket_status": chat_manager.list_active_connections()
+        "n8n_webhook_url": N8N_WEBHOOK_URL,  # Adicionado para debug
+        "websocket_available": True,
+        "active_connections": len(manager.active_connections)
     }
     
+    # Testar conexão com a API OpenAI se a chave estiver configurada
     if OPENAI_API_KEY:
         try:
-            client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)
+            if OPENAI_ORG_ID:
+                client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)
+            else:
+                client = OpenAI(api_key=OPENAI_API_KEY)
+                
             models = client.models.list()
             status_info["openai_connection"] = "successful"
             status_info["available_models"] = [model.id for model in models.data[:3]]
@@ -306,23 +247,57 @@ async def get_status():
             status_info["openai_connection"] = "failed"
             status_info["openai_error"] = str(e)
     
+    # Agora assume que o webhook N8N está OK sem tentar fazer um request
+    if N8N_WEBHOOK_URL:
+        status_info["n8n_connection"] = "successful"
+    else:
+        status_info["n8n_connection"] = "failed"
+        status_info["n8n_error"] = "N8N_WEBHOOK_URL não configurado"
+    
     return status_info
 
-# Endpoint para enviar mensagens para o N8N
+# Nova rota para depuração - vai ajudar a encontrar erros
+@app.get("/")
+async def root():
+    # Listar todas as rotas disponíveis
+    routes = [{"path": route.path, "name": route.name, "methods": list(route.methods)} 
+             for route in app.routes]
+    
+    return {
+        "message": "Nexios Digital API está online",
+        "available_routes": routes,
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "n8n_webhook_url": N8N_WEBHOOK_URL
+    }
+
+# Endpoint para enviar mensagens para o N8N - MODIFICADO
 @app.post("/api/chat-n8n")
 async def chat_n8n(request: ChatRequest):
+    """
+    Endpoint que envia mensagens para processamento no N8N.
+    """
     logger.info(f"Recebendo mensagem para envio ao N8N: {request.message}")
     
-    # Gerar ou usar ID de conversa existente
+    # Log completo do request para debug
+    logger.debug(f"Request completo para N8N: {request}")
+    
+    # Gerar ou usar ID de conversa
     conversation_id = request.conversation_id or str(uuid.uuid4())
-    logger.info(f"Usando ID de conversa: {conversation_id}")
+    logger.info(f"Usando conversation_id: {conversation_id}")
     
     # Verificar se a URL do webhook está configurada
     if not N8N_WEBHOOK_URL:
-        logger.error("URL do webhook N8N não configurada")
+        logger.error("Erro: URL do webhook N8N não configurada")
         return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
     
     try:
+        # Armazenar a mensagem do usuário
+        store_message(conversation_id, {
+            "role": "user", 
+            "content": request.message, 
+            "timestamp": datetime.now().isoformat()
+        })
+        
         # Preparar dados para enviar ao N8N
         n8n_data = {
             "message": request.message,
@@ -334,176 +309,100 @@ async def chat_n8n(request: ChatRequest):
             ]
         }
         
-        # Adicionar mensagem do usuário ao histórico
-        chat_manager.add_message(
-            conversation_id=conversation_id,
-            message={
-                "role": "user",
-                "content": request.message,
-                "timestamp": datetime.now().isoformat()
-            }
-        )
+        logger.info(f"Enviando dados para N8N: {N8N_WEBHOOK_URL}")
         
         # Enviar para o webhook N8N
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 N8N_WEBHOOK_URL,
                 json=n8n_data,
-                timeout=10.0
+                timeout=10.0  # Timeout maior para o N8N processar
             )
             
             logger.info(f"Resposta do N8N: Status {response.status_code}")
             
-            # Verificar resposta
-            if response.status_code < 400:
-                try:
-                    # Tentar extrair a resposta do JSON
-                    response_data = response.json()
-                    
-                    # Verificar formato da resposta
-                    if isinstance(response_data, dict) and "data" in response_data:
-                        n8n_response = response_data["data"].get("response", "")
-                    else:
-                        n8n_response = response_data.get("response", response.text)
-                    
-                    logger.info(f"Resposta processada do N8N: {n8n_response[:50]}...")
-                    
-                    # Adicionar resposta ao histórico se não for uma confirmação de workflow
-                    # Respostas reais virão pelo callback
-                    if "processando" not in n8n_response.lower() and "iniciando" not in n8n_response.lower():
-                        chat_manager.add_message(
-                            conversation_id=conversation_id,
-                            message={
-                                "role": "assistant",
-                                "content": n8n_response,
-                                "timestamp": datetime.now().isoformat()
-                            }
-                        )
-                    
-                    return {"response": n8n_response, "conversation_id": conversation_id}
-                except Exception as e:
-                    logger.error(f"Erro ao processar JSON da resposta do N8N: {str(e)}")
-                    return {
-                        "response": "Desculpe, houve um erro ao processar a resposta do sistema. Por favor, tente novamente.",
-                        "conversation_id": conversation_id
-                    }
-            else:
-                logger.error(f"Erro na resposta do N8N: {response.status_code} - {response.text}")
-                return {
-                    "response": f"Erro ao processar mensagem: Código de status {response.status_code}",
-                    "conversation_id": conversation_id
-                }
+            # MODIFICADO: Indicar explicitamente que está processando
+            return {
+                "response": "Aguarde enquanto processamos sua mensagem...",
+                "conversation_id": conversation_id,
+                "status": "processing"  # Nova flag para indicar processamento assíncrono
+            }
     except Exception as e:
         logger.error(f"Erro ao enviar mensagem para N8N: {str(e)}")
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
 
-# Endpoint para receber callbacks do N8N - refatorado completamente
+# NOVO: Endpoint para recuperar mensagens de uma conversa
+@app.get("/api/messages/{conversation_id}")
+async def get_messages(conversation_id: str):
+    """
+    Recupera todas as mensagens de uma conversa específica
+    """
+    logger.info(f"Solicitação para recuperar mensagens da conversa: {conversation_id}")
+    messages = get_conversation_history(conversation_id)
+    
+    return {
+        "conversation_id": conversation_id,
+        "messages": messages
+    }
+
+# Endpoint para receber callbacks do N8N - MODIFICADO
 @app.post("/api/n8n-callback")
 async def n8n_callback(data: N8nResponse):
     """
     Endpoint para receber respostas processadas pelo N8N.
     """
-    logger.info(f"[CALLBACK] Recebendo callback do N8N para conversa: {data.conversation_id}")
+    logger.info(f"Recebendo callback do N8N para conversa: {data.conversation_id}")
+    logger.debug(f"Conteúdo completo do callback: {data}")
+    logger.debug(f"Conexões ativas atuais: {len(manager.active_connections)}")
     
     try:
         # Verificar se temos um ID de conversa
         if not data.conversation_id:
-            logger.error("[CALLBACK] ID de conversa não fornecido no callback do N8N")
+            logger.error("ID de conversa não fornecido no callback")
             return {"error": True, "message": "ID de conversa não fornecido"}
         
-        # Adicionar a resposta processada ao histórico
-        chat_manager.add_message(
-            conversation_id=data.conversation_id,
-            message={
-                "role": "assistant",
+        # Armazenar a mensagem do assistente
+        store_message(
+            data.conversation_id, 
+            {
+                "role": "assistant", 
                 "content": data.processed_response,
                 "timestamp": data.timestamp or datetime.now().isoformat(),
-                "metadata": data.metadata or {}
+                "metadata": data.metadata
             }
         )
         
-        # Verificar se há cliente associado a esta conversa
-        client_id = chat_manager.get_client_by_conversation(data.conversation_id)
+        # Tentar enviar via WebSocket para clientes conectados
+        sent_to_client = False
+        for conn in manager.active_connections:
+            if conn["client_id"] == data.conversation_id:
+                try:
+                    await conn["websocket"].send_json({
+                        "type": "message",
+                        "content": data.processed_response,
+                        "timestamp": data.timestamp or datetime.now().isoformat()
+                    })
+                    logger.info(f"Resposta enviada ao cliente {data.conversation_id} via WebSocket")
+                    sent_to_client = True
+                except Exception as e:
+                    logger.error(f"Erro ao enviar via WebSocket: {str(e)}")
         
-        if client_id:
-            logger.info(f"[CALLBACK] Encontrado cliente {client_id} para conversa {data.conversation_id}")
-            
-            # A entrega será feita automaticamente pelo mecanismo de mensagens pendentes
-            # Se o cliente estiver online, a mensagem será entregue imediatamente
-            # Se estiver offline, será entregue quando reconectar
-        else:
-            logger.warning(f"[CALLBACK] Nenhum cliente encontrado para conversa {data.conversation_id}")
-        
-        # Novo endpoint para clientes recuperarem mensagens perdidas
-        logger.info(f"[CALLBACK] Mensagem do N8N armazenada com sucesso para conversa {data.conversation_id}")
+        if not sent_to_client:
+            logger.info(f"Nenhum cliente WebSocket ativo para conversa {data.conversation_id}. Mensagem armazenada.")
         
         return {"success": True, "message": "Callback processado com sucesso"}
     except Exception as e:
-        logger.error(f"[CALLBACK] Erro ao processar callback do N8N: {str(e)}", exc_info=True)
+        logger.error(f"Erro ao processar callback do N8N: {str(e)}")
         return {"error": True, "message": str(e)}
-
-# Endpoint para recuperar mensagens pendentes (alternativa ao WebSocket)
-@app.get("/api/messages/{conversation_id}")
-async def get_messages(conversation_id: str, since: Optional[str] = None):
-    """
-    Recupera mensagens de uma conversa, opcionalmente filtrando por timestamp
-    """
-    try:
-        messages = chat_manager.get_history(conversation_id)
-        
-        # Filtrar por timestamp se fornecido
-        if since:
-            since_dt = datetime.fromisoformat(since)
-            messages = [msg for msg in messages if datetime.fromisoformat(msg.get("timestamp", "")) > since_dt]
-        
-        return {
-            "conversation_id": conversation_id,
-            "messages": messages
-        }
-    except Exception as e:
-        logger.error(f"Erro ao recuperar mensagens: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Endpoint para associar explicitamente um cliente a uma conversa
-@app.post("/api/associate-client")
-async def associate_client(request: Dict[str, str]):
-    """
-    Associa um client_id a um conversation_id explicitamente
-    """
-    try:
-        client_id = request.get("client_id")
-        conversation_id = request.get("conversation_id")
-        
-        if not client_id or not conversation_id:
-            return {"success": False, "message": "client_id e conversation_id são obrigatórios"}
-        
-        chat_manager.associate_conversation(client_id, conversation_id)
-        return {"success": True, "message": f"Cliente {client_id} associado à conversa {conversation_id}"}
-    except Exception as e:
-        logger.error(f"Erro ao associar cliente: {str(e)}")
-        return {"success": False, "message": str(e)}
 
 # Rota de chat que redireciona para o endpoint N8N
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
-    Endpoint legado que redireciona para chat-n8n
+    Endpoint que redireciona para o endpoint chat-n8n.
+    Isso é para compatibilidade com qualquer frontend que ainda use /api/chat.
     """
-    logger.info(f"Redirecionando chamada de /api/chat para /api/chat-n8n")
+    logger.info(f"Recebendo mensagem no /api/chat, redirecionando para chat-n8n: {request.message}")
+    
+    # Simplesmente chama o endpoint chat-n8n
     return await chat_n8n(request)
-
-# Rota raiz para verificação de status
-@app.get("/")
-async def root():
-    routes = [{"path": route.path, "name": route.name, "methods": list(route.methods)} 
-             for route in app.routes]
-    
-    connections_info = chat_manager.list_active_connections()
-    
-    return {
-        "status": "online",
-        "message": "Nexios Digital API está online",
-        "available_routes": routes,
-        "websocket_connections": connections_info,
-        "environment": os.getenv("ENVIRONMENT", "development")
-    }
