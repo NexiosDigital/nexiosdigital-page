@@ -1,0 +1,14 @@
+http:
+  routers:
+    nexios-api:
+      rule: "Host(`nexiosdigital.com`) && PathPrefix(`/api`)"
+      service: "nexios-backend"
+      entryPoints:
+        - "websecure"
+      tls: {}
+
+  services:
+    nexios-backend:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.1.139:8000"
