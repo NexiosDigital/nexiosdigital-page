@@ -8,6 +8,32 @@ networks:
   internal:
 
 services:
+  traefik:
+    image: traefik:v2.11.2
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencryptresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=seu-email@example.com"
+      - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik-config:/etc/traefik/dynamic"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - NexiosNet
+    restart: always
+    labels:
+      - "traefik.enable=true"
+
   frontend:
     build:
       context: ./frontend
@@ -26,8 +52,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     restart: always
-    ports:
-      - "127.0.0.1:8000:8000"  # Acesso local apenas
     environment:
       - MONGODB_URL=mongodb://mongo:27017
       - SECRET_KEY=${SECRET_KEY}
@@ -44,13 +68,13 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.tls=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.tls.certresolver=letsencryptresolver"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}-api.loadbalancer.server.port=8000"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.priority=100"
       
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls.certresolver=letsencryptresolver"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws.loadbalancer.server.port=8000"
 
   mongo:
@@ -82,7 +106,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${DOMAIN_NAME}`) && !PathPrefix(`/api`, `/ws`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls.certresolver=letsencryptresolver"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}-frontend.loadbalancer.server.port=80"
 
   # Certbot service remains unchanged

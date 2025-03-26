@@ -24,6 +24,10 @@ const AIChat = () => {
 	const chatMessagesRef = useRef(null);
 	const chatInputRef = useRef(null);
 
+	// URL base da API com HTTPS
+	const API_URL =
+		process.env.REACT_APP_API_URL || "https://www.nexiosdigital.com";
+
 	// Efeito para ajustar o scroll quando as mensagens mudam
 	useEffect(() => {
 		if (chatMessagesRef.current) {
@@ -35,14 +39,11 @@ const AIChat = () => {
 	useEffect(() => {
 		const checkApiStatus = async () => {
 			try {
-				const response = await axios.get(
-					"http://www.nexiosdigital.com:8000/api/status",
-					{
-						headers: {
-							"Content-Type": "application/json",
-						},
-					}
-				);
+				const response = await axios.get(`${API_URL}/api/status`, {
+					headers: {
+						"Content-Type": "application/json",
+					},
+				});
 
 				if (response.status === 200) {
 					setConnectionStatus("connected");
@@ -66,7 +67,7 @@ const AIChat = () => {
 			console.log(`Enviando mensagem para o backend...`);
 
 			// Usando o endpoint completo com validação de origem
-			const apiUrl = "http://www.nexiosdigital.com:8000/api/chat";
+			const apiUrl = `${API_URL}/api/chat`;
 
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
 

@@ -1,7 +1,8 @@
 import axios from "axios";
 
 // URL base para API
-const API_URL = process.env.REACT_APP_API_URL || "";
+const API_URL =
+	process.env.REACT_APP_API_URL || "https://www.nexiosdigital.com";
 
 // Configuração padrão para axios
 const apiClient = axios.create({

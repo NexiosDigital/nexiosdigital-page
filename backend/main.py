@@ -49,15 +49,15 @@ async def startup_event():
 # Configuração do CORS - com domínios específicos para produção
 app.add_middleware(
     CORSMiddleware,
-    # Substitua com seus domínios reais
     allow_origins=[
         "https://nexiosdigital.com",
         "https://www.nexiosdigital.com", 
         "https://n8n.nexiosdigital.com",
-        # Manter para desenvolvimento
+        # Manter apenas para desenvolvimento
         "http://localhost:3000",
-        "http://localhost:8000",
-        "*"  # TEMPORARIAMENTE permitir todas as origens para depuração
+        "http://localhost:8000"
+        # Remover o "*" para produção após testes
+        # "*"  # TEMPORARIAMENTE permitir todas as origens para depuração
     ],
     allow_credentials=True,
     allow_methods=["*"],

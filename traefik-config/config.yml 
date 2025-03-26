@@ -1,5 +1,3 @@
-# Arquivo traefik-config.yml atualizado
-
 http:
   middlewares:
     https-redirect:
@@ -46,14 +44,8 @@ http:
     # Roteador para redirecionamento HTTP para HTTPS
     http-catchall:
       rule: "hostregexp(`{host:.+}`)"
-      service: "nexiosdigital-backend"
+      service: "noop@internal"
       entryPoints:
         - "web"
       middlewares:
         - "https-redirect"
-  
-  services:
-    nexiosdigital-backend:
-      loadBalancer:
-        servers:
-          - url: "http://backend:8000"
