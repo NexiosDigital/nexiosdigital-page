@@ -341,7 +341,7 @@ async def chat_n8n(request: ChatRequest):
 
 # Endpoint para receber callbacks do N8N
 @app.post("/api/n8n-callback")
-async def n8n_callback(data: N8nResponse, token: str = Depends(verify_token)):
+async def n8n_callback(data: N8nResponse):
     """
     Endpoint para receber respostas processadas pelo N8N.
     """
