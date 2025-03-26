@@ -22,7 +22,7 @@ if not N8N_WEBHOOK_URL:
     logger.warning("N8N_WEBHOOK_URL não está configurada no ambiente")
     # Comentado para evitar falha na inicialização
     # raise ValueError("N8N_WEBHOOK_URL é obrigatória. Configure a variável de ambiente.")
-    N8N_WEBHOOK_URL = "https://webhook.nexiosdigital.com/webhook/9862149e-e4d5-4c63-b2ce-2a4954c531f2"
+    N8N_WEBHOOK_URL = "https://webhook.nexiosdigital.com/webhook/nexios-chat-processor"
     logger.warning(f"Usando URL padrão para webhook N8N: {N8N_WEBHOOK_URL}")
 
 # Obter outras variáveis de ambiente
@@ -52,15 +52,14 @@ app.add_middleware(
     allow_origins=[
         "https://nexiosdigital.com",
         "https://www.nexiosdigital.com", 
-        "https://n8n.nexiosdigital.com",
-        # Manter apenas para desenvolvimento
+        "http://nexiosdigital.com",
+        "http://www.nexiosdigital.com",
+        # Para desenvolvimento
         "http://localhost:3000",
         "http://localhost:8000"
-        # Remover o "*" para produção após testes
-        # "*"  # TEMPORARIAMENTE permitir todas as origens para depuração
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"]
 )
@@ -342,82 +341,131 @@ async def chat(request: ChatRequest):
         logger.error(f"Erro ao processar mensagem: {str(e)}")
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
 
-# NOVO ENDPOINT DE FALLBACK QUE USA OpenAI DIRETAMENTE SEM DEPENDER DO N8N
-@app.post("/api/chat-direct")
-async def chat_direct(request: ChatRequest):
+# Endpoint para enviar mensagens para o N8N
+@app.post("/api/chat-n8n")
+async def chat_n8n(request: ChatRequest):
     """
-    Endpoint de fallback que usa a API OpenAI diretamente, sem depender do N8N.
+    Endpoint que envia mensagens para processamento no N8N.
     """
-    logger.info(f"Recebendo mensagem para processamento direto: {request.message}")
+    logger.info(f"Recebendo mensagem para envio ao N8N: {request.message}")
     
     # Log completo do request para debug
-    logger.debug(f"Request completo (direto): {request}")
+    logger.debug(f"Request completo para N8N: {request}")
     
     # Gerar ou usar ID de conversa
     conversation_id = request.conversation_id or str(uuid.uuid4())
     
-    if not OPENAI_API_KEY:
-        logger.error("Erro: Chave API não configurada")
+    # Verificar se a URL do webhook está configurada
+    if not N8N_WEBHOOK_URL:
+        logger.error("Erro: URL do webhook N8N não configurada")
         return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
     
     try:
-        # Criar cliente OpenAI
-        if OPENAI_ORG_ID:
-            client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)
-        else:
-            client = OpenAI(api_key=OPENAI_API_KEY)
+        # Preparar dados para enviar ao N8N
+        n8n_data = {
+            "message": request.message,
+            "conversation_id": conversation_id,
+            "timestamp": datetime.now().isoformat(),
+            "conversation_history": [
+                {"role": msg.role, "content": msg.content} 
+                for msg in request.conversation_history
+            ]
+        }
         
-        # Preparar mensagens para a API
-        messages = []
+        logger.info(f"Enviando dados para N8N: {N8N_WEBHOOK_URL}")
         
-        # Adicionar mensagem de sistema (contexto para a IA)
-        messages.append({
-            "role": "system", 
-            "content": """
-            Você é o assistente virtual da Nexios Digital, uma empresa de soluções de inteligência artificial.
-            Forneça informações sobre nossos serviços:
-            1. Agentes de IA para atendimento ao cliente
-            2. Automação de vendas e processos
-            3. Consultoria em implementação de IA
-            4. Automação com ClickUp
+        # Enviar para o webhook N8N
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                N8N_WEBHOOK_URL,
+                json=n8n_data,
+                timeout=10.0  # Timeout maior para o N8N processar
+            )
             
-            Seja profissional, amigável e conciso nas suas respostas.
-            """
-        })
+            logger.info(f"Resposta do N8N: Status {response.status_code}")
+            logger.debug(f"Conteúdo da resposta N8N: {response.text}")
+            
+            # Verificar resposta
+            if response.status_code < 400:
+                try:
+                    # Tentar extrair a resposta do JSON
+                    response_data = response.json()
+                    
+                    # Verificar formato da resposta
+                    if isinstance(response_data, dict) and "data" in response_data:
+                        # Formato específico da resposta do N8N
+                        n8n_response = response_data["data"].get("response", "")
+                    else:
+                        # Aceitar outros formatos possíveis
+                        n8n_response = response_data.get("response", response.text)
+                    
+                    logger.info(f"Resposta processada do N8N: {n8n_response[:50]}...")
+                    
+                    # Armazenar mensagens na conversa
+                    store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
+                    store_message(conversation_id, {"role": "assistant", "content": n8n_response, "timestamp": datetime.now().isoformat()})
+                    
+                    return {"response": n8n_response, "conversation_id": conversation_id}
+                except Exception as e:
+                    logger.error(f"Erro ao processar JSON da resposta do N8N: {str(e)}")
+                    return {
+                        "response": "Desculpe, houve um erro ao processar a resposta do sistema. Por favor, tente novamente.",
+                        "conversation_id": conversation_id
+                    }
+            else:
+                logger.error(f"Erro na resposta do N8N: {response.status_code} - {response.text}")
+                return {
+                    "response": f"Erro ao processar mensagem: Código de status {response.status_code}",
+                    "conversation_id": conversation_id
+                }
+    except Exception as e:
+        logger.error(f"Erro ao enviar mensagem para N8N: {str(e)}")
+        return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
+
+# Endpoint para receber callbacks do N8N
+@app.post("/api/n8n-callback")
+async def n8n_callback(data: N8nResponse, token: str = Depends(verify_token)):
+    """
+    Endpoint para receber respostas processadas pelo N8N.
+    """
+    logger.info(f"Recebendo callback do N8N para conversa: {data.conversation_id}")
+    
+    try:
+        # Verificar se temos um ID de conversa
+        if not data.conversation_id:
+            return {"error": "ID de conversa não fornecido"}
         
-        # Adicionar histórico de conversa (se existir)
-        for message in request.conversation_history:
-            messages.append({
-                "role": message.role,
-                "content": message.content
-            })
-        
-        # Adicionar a mensagem atual do usuário
-        messages.append({
-            "role": "user",
-            "content": request.message
-        })
-        
-        logger.info(f"[DIRETO] Enviando {len(messages)} mensagens para OpenAI")
-        
-        # Fazer a chamada para a API
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Modelo mais econômico e rápido
-            messages=messages,
-            temperature=0.7,
-            max_tokens=800
+        # Armazenar a mensagem na conversa
+        store_message(
+            data.conversation_id, 
+            {
+                "role": "assistant", 
+                "content": data.processed_response,
+                "timestamp": data.timestamp or datetime.now().isoformat(),
+                "metadata": data.metadata
+            }
         )
         
-        # Extrair resposta
-        ai_response = response.choices[0].message.content
-        logger.info(f"[DIRETO] Resposta recebida: {ai_response[:50]}...")
+        # Enviar a resposta ao cliente via WebSocket se estiver conectado
+        # Verificar se há algum cliente conectado com o ID da conversa
+        client_connection = None
+        for conn in manager.active_connections:
+            if conn["client_id"] == data.conversation_id:
+                client_connection = conn
+                break
         
-        # Armazenar mensagens na conversa
-        store_message(conversation_id, {"role": "user", "content": request.message, "timestamp": datetime.now().isoformat()})
-        store_message(conversation_id, {"role": "assistant", "content": ai_response, "timestamp": datetime.now().isoformat()})
+        if client_connection:
+            # Enviar a resposta ao cliente
+            await client_connection["websocket"].send_json({
+                "type": "message",
+                "content": data.processed_response,
+                "timestamp": data.timestamp or datetime.now().isoformat()
+            })
+            logger.info(f"Resposta enviada ao cliente {data.conversation_id} via WebSocket")
+        else:
+            logger.warning(f"Cliente {data.conversation_id} não está conectado via WebSocket")
         
-        return {"response": ai_response, "conversation_id": conversation_id}
-    
+        return {"success": True, "message": "Callback processado com sucesso"}
     except Exception as e:
-        logger.error(f"[DIRETO] Erro ao processar mensagem: {str(e)}")
-        return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
+        logger.error(f"Erro ao processar callback do N8N: {str(e)}")
+        return {"error": str(e)}

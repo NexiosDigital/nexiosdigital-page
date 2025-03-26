@@ -25,8 +25,7 @@ const AIChat = () => {
 	const chatInputRef = useRef(null);
 
 	// URL base da API com HTTPS
-	const API_URL =
-		process.env.REACT_APP_API_URL || "https://www.nexiosdigital.com";
+	const API_URL = process.env.REACT_APP_API_URL || "https://nexiosdigital.com";
 
 	// Efeito para ajustar o scroll quando as mensagens mudam
 	useEffect(() => {
@@ -67,11 +66,13 @@ const AIChat = () => {
 			console.log(`Enviando mensagem para o backend...`);
 
 			// Usando o endpoint completo com validação de origem
-			const apiUrl = `${API_URL}/api/chat`;
+			// Mudado para usar o endpoint chat-n8n que utiliza o webhook do N8N
+			const apiUrl = `${API_URL}/api/chat-n8n`;
 
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
 
 			// Criar cliente axios com configurações específicas para esta chamada
+			// Removido o cabeçalho Origin que estava causando o erro CORS
 			const response = await axios.post(
 				apiUrl,
 				{
@@ -85,7 +86,6 @@ const AIChat = () => {
 				{
 					headers: {
 						"Content-Type": "application/json",
-						Origin: window.location.origin,
 						"X-Requested-With": "XMLHttpRequest",
 					},
 					// Não enviar cookies com a solicitação para reduzir riscos
