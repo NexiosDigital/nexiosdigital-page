@@ -380,7 +380,7 @@ async def n8n_callback(data: N8nResponse):
             })
             logger.info(f"Resposta enviada ao cliente {data.conversation_id} via WebSocket")
         else:
-            logger.warning(f"Cliente {data.conversation_id, data.processed_response} não está conectado via WebSocket")
+            logger.warning(f"Cliente {data.conversation_id} não está conectado via WebSocket")
         
         return {"success": True, "message": "Callback processado com sucesso"}
     except Exception as e:
