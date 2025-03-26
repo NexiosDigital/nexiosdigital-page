@@ -36,18 +36,18 @@ services:
       - mongo
     networks:
       - internal
-      - NexiosNet
+      - NexiosNet  # Importante: conecte à rede do Traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-api.tls=true"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.nexiosdigital-api.rule=Host(`nexiosdigital.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.nexiosdigital-api.entrypoints=websecure"
+      - "traefik.http.routers.nexiosdigital-api.tls=true"
+      - "traefik.http.services.nexiosdigital-api.loadbalancer.server.port=8000"
       
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.rule=Host(`${DOMAIN_NAME}`) && PathPrefix(`/ws`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-ws.tls=true"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-ws.loadbalancer.server.port=8000"
+      - "traefik.http.routers.nexiosdigital-ws.rule=Host(`nexiosdigital.com`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.nexiosdigital-ws.entrypoints=websecure"
+      - "traefik.http.routers.nexiosdigital-ws.tls=true"
+      - "traefik.http.services.nexiosdigital-ws.loadbalancer.server.port=8000"
 
   mongo:
     image: mongo:latest
@@ -74,10 +74,10 @@ services:
       - NexiosNet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${DOMAIN_NAME}`) && !PathPrefix(`/api`, `/ws`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls=true"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.nexiosdigital-frontend.rule=Host(`nexiosdigital.com`) && !PathPrefix(`/api`, `/ws`)"
+      - "traefik.http.routers.nexiosdigital-frontend.entrypoints=websecure"
+      - "traefik.http.routers.nexiosdigital-frontend.tls=true"
+      - "traefik.http.services.nexiosdigital-frontend.loadbalancer.server.port=80"
 
   certbot:
     image: certbot/certbot
