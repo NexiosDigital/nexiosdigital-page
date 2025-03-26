@@ -27,7 +27,7 @@ if not N8N_WEBHOOK_URL:
 # Obter outras variáveis de ambiente
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
-N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "")
+N8N_API_TOKEN = os.getenv("N8N_API_TOKEN", "dasdaksmda")
 
 # Verificar token de API
 if not N8N_API_TOKEN:
