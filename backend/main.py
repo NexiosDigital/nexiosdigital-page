@@ -160,7 +160,7 @@ def store_message(conversation_id: str, message: Dict[str, Any]):
 def get_conversation_history(conversation_id: str) -> List[Dict[str, Any]]:
     return conversation_store.get(conversation_id, [])
 
-# Modificação na rota WebSocket para diagnóstico:
+# MODIFICADO: Endpoint WebSocket para registrar corretamente as conexões
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     logger.debug(f"Nova tentativa de conexão WebSocket de cliente: {client_id}")
@@ -168,8 +168,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     logger.debug(f"Parâmetros da solicitação: {websocket.query_params}")
     
     try:
-        await websocket.accept()
-        logger.info(f"WebSocket conectado para cliente {client_id}")
+        # Registrar no ConnectionManager ao invés de aceitar diretamente
+        await manager.connect(websocket, client_id)
+        logger.info(f"WebSocket conectado para cliente {client_id}. Total de conexões: {len(manager.active_connections)}")
         
         # Enviar mensagem de confirmação
         await websocket.send_json({
@@ -202,7 +203,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         logger.warning(f"Cliente {client_id} desconectou durante o handshake")
     except Exception as e:
         logger.error(f"Erro ao aceitar conexão de {client_id}: {str(e)}", exc_info=True)
-        
+    
+    # Desconectar do manager quando a conexão for encerrada
+    manager.disconnect(websocket)
     logger.info(f"Conexão WebSocket encerrada para cliente {client_id}")
 
 # Rota para verificar status da API
@@ -339,18 +342,21 @@ async def chat_n8n(request: ChatRequest):
         logger.error(f"Erro ao enviar mensagem para N8N: {str(e)}")
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
 
-# Endpoint para receber callbacks do N8N
+# MODIFICADO: Endpoint para receber callbacks do N8N com logs adicionais
 @app.post("/api/n8n-callback")
 async def n8n_callback(data: N8nResponse):
     """
     Endpoint para receber respostas processadas pelo N8N.
     """
     logger.info(f"Recebendo callback do N8N para conversa: {data.conversation_id}")
+    logger.debug(f"Conteúdo completo do callback: {data}")
+    logger.debug(f"Conexões ativas atuais: {len(manager.active_connections)}")
+    logger.debug(f"IDs das conexões ativas: {[conn.get('client_id') for conn in manager.active_connections]}")
     
     try:
         # Verificar se temos um ID de conversa
         if not data.conversation_id:
-            return {"error": "ID de conversa não fornecido"}
+            return {"error": True, "message": "ID de conversa não fornecido"}
         
         # Armazenar a mensagem na conversa
         store_message(
@@ -363,29 +369,34 @@ async def n8n_callback(data: N8nResponse):
             }
         )
         
-        # Enviar a resposta ao cliente via WebSocket se estiver conectado
         # Verificar se há algum cliente conectado com o ID da conversa
-        client_connection = None
+        client_found = False
         for conn in manager.active_connections:
-            if conn["client_id"] == data.conversation_id:
-                client_connection = conn
+            if conn.get("client_id") == data.conversation_id:
+                client_found = True
+                logger.info(f"Cliente {data.conversation_id} encontrado! Enviando resposta via WebSocket.")
+                
+                # Enviar a resposta ao cliente
+                try:
+                    await conn["websocket"].send_json({
+                        "type": "message",
+                        "content": data.processed_response,
+                        "timestamp": data.timestamp or datetime.now().isoformat()
+                    })
+                    logger.info(f"Resposta enviada ao cliente {data.conversation_id} via WebSocket")
+                except Exception as e:
+                    logger.error(f"Erro ao enviar mensagem pelo WebSocket: {str(e)}")
+                    # Se houver erro, remover a conexão
+                    manager.disconnect(conn["websocket"])
                 break
         
-        if client_connection:
-            # Enviar a resposta ao cliente
-            await client_connection["websocket"].send_json({
-                "type": "message",
-                "content": data.processed_response,
-                "timestamp": data.timestamp or datetime.now().isoformat()
-            })
-            logger.info(f"Resposta enviada ao cliente {data.conversation_id} via WebSocket")
-        else:
+        if not client_found:
             logger.warning(f"Cliente {data.conversation_id} não está conectado via WebSocket")
         
         return {"success": True, "message": "Callback processado com sucesso"}
     except Exception as e:
-        logger.error(f"Erro ao processar callback do N8N: {str(e)}")
-        return {"error": str(e)}
+        logger.error(f"Erro ao processar callback do N8N: {str(e)}", exc_info=True)
+        return {"error": True, "message": str(e)}
 
 # Rota de chat que redireciona para o endpoint N8N
 @app.post("/api/chat")
