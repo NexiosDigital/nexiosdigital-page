@@ -7,9 +7,7 @@ http:
     cors-headers:
       headers:
         accessControlAllowOriginList:
-          - "https://nexiosdigital.com"
-          - "https://www.nexiosdigital.com"
-          - "http://localhost:3000"
+          - "*"  # Permitir todas as origens temporariamente para debugging
         accessControlAllowMethods:
           - GET
           - POST
@@ -32,6 +30,7 @@ http:
       tls: {}
       middlewares:
         - "cors-headers"
+      priority: 100
     
     # Roteador para WebSockets
     websockets:
@@ -40,6 +39,9 @@ http:
       entryPoints:
         - "websecure"
       tls: {}
+      middlewares:
+        - "cors-headers"
+      priority: 100
   
     # Roteador para redirecionamento HTTP para HTTPS
     http-catchall:
@@ -49,3 +51,4 @@ http:
         - "web"
       middlewares:
         - "https-redirect"
+      priority: 1

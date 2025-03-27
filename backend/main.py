@@ -46,22 +46,13 @@ async def startup_event():
     
     print("========================")
 
-# Configuração do CORS - com domínios específicos para produção e todos os cabeçalhos permitidos
+# Configuração do CORS - ATUALIZADA para permitir todas as origens durante os testes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://nexiosdigital.com",
-        "https://www.nexiosdigital.com", 
-        "http://nexiosdigital.com",
-        "http://www.nexiosdigital.com",
-        # Para desenvolvimento
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "*"  # Permite todas as origens em desenvolvimento (remover em produção)
-    ],
+    allow_origins=["*"],  # Allow all origins temporarily for testing
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
     expose_headers=["*"]
 )
 
@@ -345,54 +336,155 @@ async def get_messages(conversation_id: str):
         "messages": messages
     }
 
-# Endpoint para receber callbacks do N8N - MODIFICADO
-@app.post("/api/n8n-callback")
-async def n8n_callback(data: N8nResponse):
+# NOVO: Endpoint de teste para simples verificação
+@app.get("/api/test-callback")
+async def test_callback():
     """
-    Endpoint para receber respostas processadas pelo N8N.
+    Endpoint de teste simples para verificar se as rotas estão funcionando.
     """
-    logger.info(f"Recebendo callback do N8N para conversa: {data.conversation_id}")
-    logger.debug(f"Conteúdo completo do callback: {data}")
-    logger.debug(f"Conexões ativas atuais: {len(manager.active_connections)}")
+    logger.info("Endpoint de teste chamado com sucesso")
+    return {
+        "status": "success",
+        "message": "Endpoint de teste funcionando corretamente",
+        "timestamp": datetime.now().isoformat()
+    }
+
+# NOVO: Endpoint de teste para POST
+@app.post("/api/test-callback")
+async def test_callback_post(request: Request):
+    """
+    Endpoint de teste POST que registra tudo que recebe.
+    """
+    logger.info("Endpoint de teste POST chamado")
+    
+    body = await request.body()
+    body_str = body.decode('utf-8')
+    headers = dict(request.headers)
+    
+    logger.info(f"Headers recebidos: {headers}")
+    logger.info(f"Body recebido: {body_str}")
     
     try:
-        # Verificar se temos um ID de conversa
-        if not data.conversation_id:
-            logger.error("ID de conversa não fornecido no callback")
-            return {"error": True, "message": "ID de conversa não fornecido"}
-        
-        # Armazenar a mensagem do assistente
-        store_message(
-            data.conversation_id, 
-            {
-                "role": "assistant", 
-                "content": data.processed_response,
-                "timestamp": data.timestamp or datetime.now().isoformat(),
-                "metadata": data.metadata
-            }
-        )
-        
-        # Tentar enviar via WebSocket para clientes conectados
-        sent_to_client = False
-        for conn in manager.active_connections:
-            if conn["client_id"] == data.conversation_id:
-                try:
-                    await conn["websocket"].send_json({
-                        "type": "message",
-                        "content": data.processed_response,
-                        "timestamp": data.timestamp or datetime.now().isoformat()
-                    })
-                    logger.info(f"Resposta enviada ao cliente {data.conversation_id} via WebSocket")
-                    sent_to_client = True
-                except Exception as e:
-                    logger.error(f"Erro ao enviar via WebSocket: {str(e)}")
-        
-        if not sent_to_client:
-            logger.info(f"Nenhum cliente WebSocket ativo para conversa {data.conversation_id}. Mensagem armazenada.")
-        
-        return {"success": True, "message": "Callback processado com sucesso"}
+        if body_str:
+            data = json.loads(body_str)
+            logger.info(f"JSON Parsed: {data}")
+        else:
+            logger.info("Body vazio")
+    except:
+        logger.info("Não foi possível fazer parse do body como JSON")
+    
+    return {
+        "status": "success",
+        "message": "Dados recebidos com sucesso no endpoint de teste POST",
+        "received_headers": headers,
+        "received_body": body_str,
+        "timestamp": datetime.now().isoformat()
+    }
+
+# APRIMORADO: Endpoint para receber callbacks do N8N com melhor tratamento de erro e logging
+@app.post("/api/n8n-callback")
+async def n8n_callback(request: Request):
+    """
+    Endpoint para receber respostas processadas pelo N8N com melhor tratamento de erro e logging.
+    """
+    logger.info(f"Recebendo callback do N8N endpoint")
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"Request headers: {request.headers}")
+    
+    # Log do corpo bruto para depuração
+    body = await request.body()
+    body_str = body.decode('utf-8')
+    logger.info(f"Corpo bruto da requisição: {body_str}")
+    
+    try:
+        # Tentar analisar JSON
+        if body_str:
+            try:
+                data_dict = json.loads(body_str)
+                logger.info(f"Dados JSON analisados: {data_dict}")
+                
+                # Validar campos obrigatórios manualmente para fornecer melhores mensagens de erro
+                if "conversation_id" not in data_dict:
+                    logger.warning("conversation_id não encontrado no payload")
+                if "original_message" not in data_dict:
+                    logger.warning("original_message não encontrado no payload")
+                if "processed_response" not in data_dict:
+                    logger.warning("processed_response não encontrado no payload")
+                
+                # Extrair campos necessários com fallbacks
+                conversation_id = data_dict.get("conversation_id")
+                if not conversation_id:
+                    # Tentar encontrar conversation_id em qualquer campo
+                    for key, value in data_dict.items():
+                        if isinstance(value, str) and "conversation" in key.lower():
+                            conversation_id = value
+                            break
+                
+                if not conversation_id:
+                    logger.error("Não foi possível encontrar conversation_id no payload")
+                    return {"error": True, "message": "conversation_id não encontrado"}
+                
+                # Extrair resposta com fallbacks
+                response_text = data_dict.get("processed_response")
+                if not response_text:
+                    response_text = data_dict.get("response", 
+                                    data_dict.get("content", 
+                                    data_dict.get("message", 
+                                    "Resposta recebida mas formato do conteúdo desconhecido")))
+                
+                # Guardar timestamp com fallback
+                timestamp = data_dict.get("timestamp", datetime.now().isoformat())
+                
+                # Extrair mensagem original com fallback
+                original_message = data_dict.get("original_message", "Mensagem original não disponível")
+                
+                # Extrair metadata com fallback
+                metadata = data_dict.get("metadata", {})
+                
+                # Armazenar a mensagem do assistente
+                store_message(
+                    conversation_id, 
+                    {
+                        "role": "assistant", 
+                        "content": response_text,
+                        "timestamp": timestamp,
+                        "metadata": metadata
+                    }
+                )
+                
+                # Tentar enviar via WebSocket para clientes conectados
+                sent_to_client = False
+                logger.debug(f"Conexões ativas atuais: {len(manager.active_connections)}")
+                logger.debug(f"Detalhes das conexões ativas: {[conn['client_id'] for conn in manager.active_connections]}")
+                
+                for conn in manager.active_connections:
+                    logger.debug(f"Verificando conexão com client_id: {conn['client_id']}")
+                    if conn["client_id"] == conversation_id:
+                        try:
+                            await conn["websocket"].send_json({
+                                "type": "message",
+                                "content": response_text,
+                                "timestamp": timestamp
+                            })
+                            logger.info(f"Resposta enviada ao cliente {conversation_id} via WebSocket")
+                            sent_to_client = True
+                        except Exception as e:
+                            logger.error(f"Erro ao enviar via WebSocket: {str(e)}", exc_info=True)
+                    else:
+                        logger.debug(f"Client ID {conn['client_id']} não corresponde ao ID da conversa {conversation_id}")
+                
+                if not sent_to_client:
+                    logger.info(f"Nenhum cliente WebSocket ativo para conversa {conversation_id}. Mensagem armazenada.")
+                
+                return {"success": True, "message": "Callback processado com sucesso"}
+            except json.JSONDecodeError as e:
+                logger.error(f"Falha ao analisar JSON: {str(e)}")
+                return {"error": True, "message": f"JSON inválido: {str(e)}"}
+        else:
+            logger.error("Corpo da requisição vazio")
+            return {"error": True, "message": "Corpo da requisição vazio"}
     except Exception as e:
-        logger.error(f"Erro ao processar callback do N8N: {str(e)}")
+        logger.error(f"Erro ao processar callback do N8N: {str(e)}", exc_info=True)
         return {"error": True, "message": str(e)}
 
 # Rota de chat que redireciona para o endpoint N8N

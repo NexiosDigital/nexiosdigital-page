@@ -31,6 +31,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
       - N8N_API_TOKEN=${N8N_API_TOKEN}
+      - LOG_LEVEL=DEBUG
+      - ENVIRONMENT=production
     networks:
       - internal
       - NexiosNet
@@ -54,6 +56,14 @@ services:
         - "traefik.http.routers.nexiosdigital-ws.tls=true"
         - "traefik.docker.network=NexiosNet"
         - "traefik.http.routers.nexiosdigital-ws.priority=100"
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
 
   mongo:
     image: mongo:latest
