@@ -381,13 +381,13 @@ async def test_callback_post(request: Request):
         "timestamp": datetime.now().isoformat()
     }
 
-# APRIMORADO: Endpoint para receber callbacks do N8N com melhor tratamento de erro e logging
+# CORRIGIDO: Endpoint para receber callbacks do N8N com verificação de token de autenticação
 @app.post("/api/n8n-callback")
-async def n8n_callback(request: Request):
+async def n8n_callback(request: Request, token: str = Depends(verify_token)):
     """
-    Endpoint para receber respostas processadas pelo N8N com melhor tratamento de erro e logging.
+    Endpoint para receber respostas processadas pelo N8N com verificação de token obrigatória.
     """
-    logger.info(f"Recebendo callback do N8N endpoint")
+    logger.info(f"Recebendo callback do N8N endpoint (autenticado)")
     logger.info(f"Request method: {request.method}")
     logger.info(f"Request headers: {request.headers}")
     
