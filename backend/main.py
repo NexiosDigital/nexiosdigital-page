@@ -251,6 +251,32 @@ async def verify_token(authorization: Optional[str] = Header(None)):
 # Função auxiliar para armazenar mensagens (pode ser substituída por uma implementação de BD)
 conversation_store = {}
 
+# NOVO: Função de debug para armazenar mensagens com mais logs
+def debug_store_message(conversation_id: str, message: Dict[str, Any]):
+    current_messages = get_conversation_history(conversation_id)
+    print(f"=== STORE MESSAGE DEBUG ===")
+    print(f"Armazenando mensagem para conversa: {conversation_id}")
+    print(f"Mensagem para armazenar: {message}")
+    print(f"Mensagens existentes: {len(current_messages)}")
+    print(f"===========================")
+    
+    # Armazena a mensagem usando a função regular
+    if conversation_id not in conversation_store:
+        conversation_store[conversation_id] = []
+    conversation_store[conversation_id].append(message)
+    
+    # Limitar o tamanho do histórico, se necessário
+    if len(conversation_store[conversation_id]) > 50:
+        conversation_store[conversation_id] = conversation_store[conversation_id][-50:]
+    
+    after_messages = get_conversation_history(conversation_id)
+    print(f"Mensagens após armazenar: {len(after_messages)}")
+    
+    # Log dos primeiros 100 caracteres de cada mensagem para verificação
+    for i, msg in enumerate(after_messages):
+        content = msg.get("content", "")[:100]
+        print(f"  Mensagem {i+1}: {msg.get('role')} - {content}...")
+
 def store_message(conversation_id: str, message: Dict[str, Any]):
     if conversation_id not in conversation_store:
         conversation_store[conversation_id] = []
@@ -297,6 +323,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             messages = get_conversation_history(conversation_id)
             if messages:
                 logger.info(f"Enviando histórico inicial de {len(messages)} mensagens para cliente {client_id}")
+                for idx, msg in enumerate(messages):
+                    logger.debug(f"Mensagem histórico {idx+1}: {msg.get('role')} - {msg.get('content', '')[:50]}...")
+                
                 await websocket.send_json({
                     "type": "message_history",
                     "messages": messages,
@@ -342,6 +371,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         messages = get_conversation_history(conv_id)
                         if messages:
                             logger.info(f"Enviando histórico de {len(messages)} mensagens para cliente {client_id}")
+                            for idx, msg in enumerate(messages):
+                                logger.debug(f"Mensagem histórico {idx+1}: {msg.get('role')} - {msg.get('content', '')[:50]}...")
+                            
                             await websocket.send_json({
                                 "type": "message_history",
                                 "messages": messages,
@@ -354,6 +386,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             # Comando para obter mensagens de uma conversa
                             conv_id = json_data['conversation_id']
                             messages = get_conversation_history(conv_id)
+                            logger.info(f"Comando get_messages: Encontradas {len(messages)} mensagens para {conv_id}")
+                            for idx, msg in enumerate(messages):
+                                logger.debug(f"Mensagem {idx+1}: {msg.get('role')} - {msg.get('content', '')[:50]}...")
+                            
                             await websocket.send_json({
                                 "type": "message_history",
                                 "messages": messages,
@@ -453,6 +489,27 @@ async def root():
         "n8n_webhook_url": N8N_WEBHOOK_URL
     }
 
+# NOVOS ENDPOINTS DE DIAGNÓSTICO PARA EXIBIR CONVERSAS
+@app.get("/api/debug/conversations")
+async def debug_conversations():
+    """Endpoint de debug para listar todas as conversas e o número de mensagens"""
+    result = {}
+    for conv_id, messages in conversation_store.items():
+        result[conv_id] = len(messages)
+    return result
+
+@app.get("/api/debug/conversation/{conversation_id}")
+async def debug_conversation(conversation_id: str):
+    """Endpoint de debug para ver as mensagens de uma conversa específica"""
+    if conversation_id in conversation_store:
+        messages = conversation_store[conversation_id]
+        return {
+            "conversation_id": conversation_id,
+            "message_count": len(messages),
+            "messages": messages
+        }
+    return {"error": "Conversa não encontrada"}
+
 # Endpoint para enviar mensagens para o N8N - MODIFICADO
 @app.post("/api/chat-n8n")
 async def chat_n8n(request: ChatRequest):
@@ -474,12 +531,13 @@ async def chat_n8n(request: ChatRequest):
         return {"response": "O sistema de IA não está configurado. Por favor, contate o administrador.", "conversation_id": conversation_id}
     
     try:
-        # Armazenar a mensagem do usuário
-        store_message(conversation_id, {
+        # Armazenar a mensagem do usuário com depuração
+        message_data = {
             "role": "user", 
             "content": request.message, 
             "timestamp": datetime.now().isoformat()
-        })
+        }
+        debug_store_message(conversation_id, message_data)
         
         # Preparar dados para enviar ao N8N
         n8n_data = {
@@ -516,7 +574,7 @@ async def chat_n8n(request: ChatRequest):
 
 # MELHORADO: Endpoint para recuperar mensagens de uma conversa
 @app.get("/api/messages/{conversation_id}")
-async def get_messages(conversation_id: str, after: Optional[str] = None):
+async def get_messages(conversation_id: str, after: Optional[str] = None, cachebuster: Optional[str] = None):
     """
     Recupera todas as mensagens de uma conversa específica
     Opcionalmente pode filtrar mensagens após um determinado timestamp
@@ -686,8 +744,13 @@ async def n8n_callback(request: Request, token: str = Depends(verify_token)):
                 "metadata": metadata
             }
             
-            store_message(conversation_id, message_data)
+            # Usar a função de debug para armazenar e rastrear mensagens
+            debug_store_message(conversation_id, message_data)
             logger.info(f"Mensagem do assistente armazenada para conversa {conversation_id}")
+            
+            # Verificar se a mensagem foi realmente armazenada
+            stored_messages = get_conversation_history(conversation_id)
+            logger.info(f"Após armazenar: {len(stored_messages)} mensagens para conversa {conversation_id}")
             
             # Preparar mensagem para envio via WebSocket
             ws_message = {
@@ -749,13 +812,15 @@ async def n8n_callback(request: Request, token: str = Depends(verify_token)):
             logger.info(f"Enviado via WebSocket: {send_success}")
             logger.info(f"Resposta: {response_text[:50]}...")
             logger.info(f"Timestamp: {timestamp}")
+            logger.info(f"Mensagens armazenadas: {len(stored_messages)}")
             logger.info(f"===========================")
             
             return {
                 "success": True, 
                 "message": "Callback processado com sucesso",
                 "sent_via_websocket": send_success,
-                "stored": True
+                "stored": True,
+                "message_count": len(stored_messages)
             }
             
         except json.JSONDecodeError as e:
