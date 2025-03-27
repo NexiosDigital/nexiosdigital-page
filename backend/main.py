@@ -39,21 +39,19 @@ app = FastAPI(title="Nexios Digital API")
 # ADICIONADO: Evento de inicialização para DEBUG
 @app.on_event("startup")
 async def startup_event():
-    print("=== SERVIDOR INICIADO ===")
-    print(f"N8N_WEBHOOK_URL: {N8N_WEBHOOK_URL}")
-    print("Configuração CORS: ", app.middleware_stack)
-    print("Rotas disponíveis:")
-    
-    print("========================")
+    logger.info("=== SERVIDOR INICIADO ===")
+    logger.info(f"N8N_WEBHOOK_URL: {N8N_WEBHOOK_URL}")
+    logger.info(f"Configuração CORS: Permitindo todas as origens")
+    logger.info("========================")
 
-# Configuração do CORS - ATUALIZADA para permitir todas as origens durante os testes
+# Configuração do CORS - CORRIGIDA para permitir todas as origens
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins temporarily for testing
+    allow_origins=["*"],  # Permitir todas as origens
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
-    expose_headers=["*"]
+    allow_methods=["*"],  # Permitir todos os métodos
+    allow_headers=["*"],  # Permitir todos os headers
+    expose_headers=["*"]  # Expor todos os headers na resposta
 )
 
 # Modelos para o chat
@@ -79,7 +77,7 @@ class N8nResponse(BaseModel):
     timestamp: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
-# Gerenciador de WebSockets ATUALIZADO
+# Gerenciador de WebSockets MELHORADO
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[Dict[str, Any]] = []
@@ -88,6 +86,18 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket, client_id: str):
         await websocket.accept()
+        
+        # Verificar se o cliente já existe e remover
+        for conn in list(self.active_connections):
+            if conn["client_id"] == client_id:
+                logger.warning(f"Cliente {client_id} já existe, removendo conexão antiga")
+                try:
+                    await conn["websocket"].close()
+                except:
+                    pass
+                self.active_connections.remove(conn)
+        
+        # Adicionar nova conexão
         self.active_connections.append({"websocket": websocket, "client_id": client_id})
         logger.info(f"Cliente {client_id} conectado. Total de conexões: {len(self.active_connections)}")
         
@@ -188,8 +198,22 @@ class ConnectionManager:
                 # Associar retroativamente
                 self.associate_conversation(matching_clients[0], conversation_id)
             else:
-                logger.warning(f"Nenhum cliente encontrado para conversa {conversation_id}")
-                return False
+                # NOVO: Tentativa de encontrar clientes pela substring do ID da conversa
+                for c in self.active_connections:
+                    client_id = c["client_id"]
+                    # Verifica se o ID do cliente contém ou está contido no ID da conversa
+                    if (client_id in conversation_id or conversation_id in client_id):
+                        logger.info(f"Encontrada correspondência parcial: cliente {client_id} -> conversa {conversation_id}")
+                        self.associate_conversation(client_id, conversation_id)
+                        break
+                else:
+                    logger.warning(f"Nenhum cliente encontrado para conversa {conversation_id}")
+                    # Último recurso: Broadcast para todos se houver poucos clientes conectados
+                    if len(self.active_connections) <= 3:
+                        logger.info(f"Tentando broadcast como último recurso para conversa {conversation_id}")
+                        await self.broadcast(message)
+                        return True
+                    return False
             
         clients = self.connection_map.get(conversation_id, [])
         logger.info(f"Enviando mensagem para {len(clients)} clientes da conversa {conversation_id}")
@@ -219,7 +243,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# Função para verificar autenticação para o endpoint N8N - Com depuração
+# Função para verificar autenticação para o endpoint N8N - Com depuração melhorada
 async def verify_token(authorization: Optional[str] = Header(None)):
     logger.debug(f"Token recebido: {authorization}")
     logger.debug(f"Token esperado: Bearer {N8N_API_TOKEN}")
@@ -251,52 +275,58 @@ async def verify_token(authorization: Optional[str] = Header(None)):
 # Função auxiliar para armazenar mensagens (pode ser substituída por uma implementação de BD)
 conversation_store = {}
 
-# NOVO: Função de debug para armazenar mensagens com mais logs
+# NOVA função melhorada para armazenar mensagens
 def debug_store_message(conversation_id: str, message: Dict[str, Any]):
-    current_messages = get_conversation_history(conversation_id)
-    print(f"=== STORE MESSAGE DEBUG ===")
-    print(f"Armazenando mensagem para conversa: {conversation_id}")
-    print(f"Mensagem para armazenar: {message}")
-    print(f"Mensagens existentes: {len(current_messages)}")
-    print(f"===========================")
+    logger.info(f"=== STORE MESSAGE DEBUG ===")
+    logger.info(f"Armazenando mensagem para conversa: {conversation_id}")
+    logger.info(f"Mensagem para armazenar: {message}")
     
-    # Armazena a mensagem usando a função regular
+    # Garantir que a conversa existe no armazenamento
     if conversation_id not in conversation_store:
         conversation_store[conversation_id] = []
-    conversation_store[conversation_id].append(message)
+        logger.info(f"Criando nova entrada para conversa {conversation_id}")
     
-    # Limitar o tamanho do histórico, se necessário
-    if len(conversation_store[conversation_id]) > 50:
-        conversation_store[conversation_id] = conversation_store[conversation_id][-50:]
+    # Adicionar timestamp se não existir
+    if "timestamp" not in message:
+        message["timestamp"] = datetime.now().isoformat()
     
-    after_messages = get_conversation_history(conversation_id)
-    print(f"Mensagens após armazenar: {len(after_messages)}")
+    # Verificar se a mensagem já existe para evitar duplicação
+    message_exists = False
+    for existing_msg in conversation_store[conversation_id]:
+        if (existing_msg.get("role") == message.get("role") and 
+            existing_msg.get("content") == message.get("content")):
+            message_exists = True
+            logger.info(f"Mensagem duplicada detectada, ignorando")
+            break
     
-    # Log dos primeiros 100 caracteres de cada mensagem para verificação
-    for i, msg in enumerate(after_messages):
+    # Armazenar apenas se não for duplicada
+    if not message_exists:
+        conversation_store[conversation_id].append(message)
+        # Limitar o tamanho do histórico, se necessário
+        if len(conversation_store[conversation_id]) > 50:
+            conversation_store[conversation_id] = conversation_store[conversation_id][-50:]
+        
+        logger.info(f"Mensagem armazenada com sucesso. Total na conversa: {len(conversation_store[conversation_id])}")
+    
+    # Log de todas as mensagens para verificação
+    logger.info(f"=== MENSAGENS NA CONVERSA {conversation_id} ===")
+    for i, msg in enumerate(conversation_store[conversation_id]):
         content = msg.get("content", "")[:100]
-        print(f"  Mensagem {i+1}: {msg.get('role')} - {content}...")
-
-def store_message(conversation_id: str, message: Dict[str, Any]):
-    if conversation_id not in conversation_store:
-        conversation_store[conversation_id] = []
-    conversation_store[conversation_id].append(message)
-    # Limitar o tamanho do histórico, se necessário
-    if len(conversation_store[conversation_id]) > 50:
-        conversation_store[conversation_id] = conversation_store[conversation_id][-50:]
+        logger.info(f"  Mensagem {i+1}: {msg.get('role')} - {content}...")
+    logger.info(f"===========================")
 
 def get_conversation_history(conversation_id: str) -> List[Dict[str, Any]]:
     return conversation_store.get(conversation_id, [])
 
-# Endpoint WebSocket para diagnóstico - MELHORADO
+# Endpoint WebSocket para comunicação em tempo real - MELHORADO
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """
     Endpoint WebSocket aprimorado com melhor rastreamento de conexões
     """
-    logger.debug(f"Nova tentativa de conexão WebSocket de cliente: {client_id}")
-    logger.debug(f"Headers da conexão: {websocket.headers}")
-    logger.debug(f"Parâmetros da solicitação: {websocket.query_params}")
+    logger.info(f"Nova tentativa de conexão WebSocket de cliente: {client_id}")
+    logger.info(f"Headers da conexão: {websocket.headers}")
+    logger.info(f"Parâmetros da solicitação: {websocket.query_params}")
     
     # Verificar se o ID de conversa foi fornecido como query param
     conversation_id = None
@@ -355,7 +385,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         conv_id = json_data['conversation_id']
                         client_to_associate = json_data.get('client_id', client_id)
                         
-                        logger.info(f"Cliente {client_to_associate} associado à conversa {conv_id}")
+                        logger.info(f"Cliente {client_to_associate} solicitou associação à conversa {conv_id}")
                         
                         # Registrar associação no gerenciador
                         manager.associate_conversation(client_to_associate, conv_id)
@@ -510,6 +540,49 @@ async def debug_conversation(conversation_id: str):
         }
     return {"error": "Conversa não encontrada"}
 
+# NOVO: Endpoint de teste para simular uma mensagem N8N
+@app.get("/api/test-n8n/{conversation_id}")
+async def test_n8n(conversation_id: str, message: Optional[str] = None):
+    """
+    Endpoint para simular manualmente um callback do N8N
+    """
+    logger.info(f"Teste manual de resposta N8N para conversa {conversation_id}")
+    
+    # Criar uma mensagem teste
+    test_content = message or f"Esta é uma mensagem de teste gerada em {datetime.now().isoformat()}. Se você está vendo isto, o fluxo está funcionando!"
+    
+    test_message = {
+        "role": "assistant", 
+        "content": test_content,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Armazenar a mensagem
+    debug_store_message(conversation_id, test_message)
+    
+    # Enviar via WebSocket
+    ws_message = {
+        "type": "message",
+        "content": test_message["content"],
+        "timestamp": test_message["timestamp"],
+        "conversation_id": conversation_id
+    }
+    
+    # Tentar enviar via diferentes métodos
+    send_success = await manager.send_to_conversation(conversation_id, ws_message)
+    
+    if not send_success:
+        # Último recurso: broadcast para todos
+        logger.warning("Envio direto falhou, tentando broadcast...")
+        await manager.broadcast(ws_message)
+    
+    return {
+        "stored": True,
+        "sent_via_websocket": send_success,
+        "message": test_message["content"],
+        "conversation_id": conversation_id
+    }
+
 # Endpoint para enviar mensagens para o N8N - MODIFICADO
 @app.post("/api/chat-n8n")
 async def chat_n8n(request: ChatRequest):
@@ -562,11 +635,11 @@ async def chat_n8n(request: ChatRequest):
             
             logger.info(f"Resposta do N8N: Status {response.status_code}")
             
-            # MODIFICADO: Indicar explicitamente que está processando
+            # Indicar explicitamente que está processando
             return {
                 "response": "Aguarde enquanto processamos sua mensagem...",
                 "conversation_id": conversation_id,
-                "status": "processing"  # Nova flag para indicar processamento assíncrono
+                "status": "processing"  # Flag para indicar processamento assíncrono
             }
     except Exception as e:
         logger.error(f"Erro ao enviar mensagem para N8N: {str(e)}")
@@ -633,51 +706,6 @@ async def get_messages(conversation_id: str, after: Optional[str] = None, cacheb
         "timestamp": datetime.now().isoformat()
     }
 
-# NOVO: Endpoint de teste para simples verificação
-@app.get("/api/test-callback")
-async def test_callback():
-    """
-    Endpoint de teste simples para verificar se as rotas estão funcionando.
-    """
-    logger.info("Endpoint de teste chamado com sucesso")
-    return {
-        "status": "success",
-        "message": "Endpoint de teste funcionando corretamente",
-        "timestamp": datetime.now().isoformat()
-    }
-
-# NOVO: Endpoint de teste para POST
-@app.post("/api/test-callback")
-async def test_callback_post(request: Request):
-    """
-    Endpoint de teste POST que registra tudo que recebe.
-    """
-    logger.info("Endpoint de teste POST chamado")
-    
-    body = await request.body()
-    body_str = body.decode('utf-8')
-    headers = dict(request.headers)
-    
-    logger.info(f"Headers recebidos: {headers}")
-    logger.info(f"Body recebido: {body_str}")
-    
-    try:
-        if body_str:
-            data = json.loads(body_str)
-            logger.info(f"JSON Parsed: {data}")
-        else:
-            logger.info("Body vazio")
-    except:
-        logger.info("Não foi possível fazer parse do body como JSON")
-    
-    return {
-        "status": "success",
-        "message": "Dados recebidos com sucesso no endpoint de teste POST",
-        "received_headers": headers,
-        "received_body": body_str,
-        "timestamp": datetime.now().isoformat()
-    }
-
 # MELHORADO: Endpoint para receber callbacks do N8N com verificação de token e melhor mapeamento
 @app.post("/api/n8n-callback")
 async def n8n_callback(request: Request, token: str = Depends(verify_token)):
@@ -691,7 +719,7 @@ async def n8n_callback(request: Request, token: str = Depends(verify_token)):
     # Log do corpo bruto para depuração
     body = await request.body()
     body_str = body.decode('utf-8')
-    logger.info(f"Corpo da requisição: {body_str[:200]}...")
+    logger.info(f"CORPO COMPLETO DA REQUISIÇÃO: {body_str}")
     
     try:
         # Tentar analisar JSON
@@ -701,7 +729,7 @@ async def n8n_callback(request: Request, token: str = Depends(verify_token)):
             
         try:
             data_dict = json.loads(body_str)
-            logger.info(f"Dados JSON analisados: {str(data_dict)[:200]}...")
+            logger.info(f"Dados JSON analisados: {json.dumps(data_dict, indent=2)}")
             
             # Extrair ID da conversa (obrigatório)
             conversation_id = data_dict.get("conversation_id")
@@ -767,44 +795,10 @@ async def n8n_callback(request: Request, token: str = Depends(verify_token)):
             if send_success:
                 logger.info(f"Mensagem enviada com sucesso via WebSocket para a conversa {conversation_id}")
             else:
-                # MÉTODO ADICIONAL: Tentar buscar por clientes que possam estar conectados 
-                # mas não associados à conversa
-                logger.warning(f"Falha no envio via mapeamento padrão, buscando clientes não mapeados...")
-                
-                # Verificar todas as conexões ativas
-                for conn in manager.active_connections:
-                    client_id = conn["client_id"]
-                    # Verificar se o cliente tem o mesmo ID que a conversa ou parte do ID
-                    if (client_id == conversation_id or 
-                        conversation_id.startswith(client_id) or 
-                        client_id.startswith(conversation_id)):
-                        
-                        logger.info(f"Encontrado cliente {client_id} com ID relacionado à conversa {conversation_id}")
-                        
-                        # Associar esse cliente à conversa
-                        manager.associate_conversation(client_id, conversation_id)
-                        
-                        try:
-                            # Tentar enviar a mensagem
-                            await conn["websocket"].send_json(ws_message)
-                            logger.info(f"Mensagem enviada para cliente {client_id} via associação retroativa")
-                            send_success = True
-                        except Exception as e:
-                            logger.error(f"Erro ao enviar via WebSocket: {str(e)}", exc_info=True)
-                
-                if not send_success:
-                    # ÚLTIMO RECURSO: Broadcast para todas as conexões
-                    if len(manager.active_connections) > 0 and len(manager.active_connections) < 5:
-                        logger.warning(f"Tentando broadcast para todas as {len(manager.active_connections)} conexões ativas")
-                        try:
-                            await manager.broadcast(ws_message)
-                            logger.info("Mensagem enviada via broadcast")
-                            send_success = True
-                        except Exception as e:
-                            logger.error(f"Erro ao fazer broadcast: {str(e)}", exc_info=True)
-                    
-                    if not send_success:
-                        logger.warning(f"Não foi possível entregar a mensagem via WebSocket. A mensagem foi apenas armazenada e estará disponível via polling.")
+                # MÉTODO ADICIONAL: Último recurso - broadcast para todos
+                logger.warning(f"Falha no envio via mapeamento. Tentando broadcast como último recurso.")
+                await manager.broadcast(ws_message)
+                send_success = True
             
             # ADICIONAL: Log de evento para verificar nas ferramentas
             logger.info(f"=== EVENTO N8N PROCESSADO ===")

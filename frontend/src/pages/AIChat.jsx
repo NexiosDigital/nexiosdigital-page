@@ -31,8 +31,10 @@ const AIChat = () => {
 	const socketRef = useRef(null);
 	const pollingIntervalRef = useRef(null);
 	const lastMessageTimestampRef = useRef(null);
-	const pollingAttemptsRef = useRef(0); // Nova ref para controlar tentativas de polling
-	const lastReceivedMessagesRef = useRef([]); // Nova ref para armazenar a última resposta do API
+	const pollingAttemptsRef = useRef(0);
+	const lastReceivedMessagesRef = useRef([]);
+	const reconnectTimeoutRef = useRef(null);
+	const socketRetryCountRef = useRef(0);
 
 	// URL base da API
 	const API_URL = process.env.REACT_APP_API_URL || "https://nexiosdigital.com";
@@ -49,20 +51,13 @@ const AIChat = () => {
 		}
 	}, [messages]);
 
-	// Função para verificar novas mensagens - MELHORADA NOVAMENTE
+	// Função para verificar novas mensagens - MELHORADA
 	const checkNewMessages = useCallback(async () => {
 		if (!conversationId) return false;
 
 		try {
 			console.log(
-				`Verificando novas mensagens para conversa ${conversationId}... (Tentativa ${
-					pollingAttemptsRef.current + 1
-				})`
-			);
-
-			// Log do timestamp da última verificação para depuração
-			console.log(
-				`Última mensagem timestamp: ${lastMessageTimestampRef.current}`
+				`Verificando novas mensagens para conversa ${conversationId}...`
 			);
 
 			// Adicionar um parâmetro de cache-busting para evitar caches
@@ -82,10 +77,7 @@ const AIChat = () => {
 
 			// Salvar a resposta completa para comparação
 			const currentMessages = response.data.messages || [];
-			console.log(
-				`Recebido ${currentMessages.length} mensagens do servidor:`,
-				currentMessages
-			);
+			console.log(`Recebido ${currentMessages.length} mensagens do servidor`);
 
 			// Se não há respostas ainda, continuar polling
 			if (currentMessages.length === 0) {
@@ -93,76 +85,63 @@ const AIChat = () => {
 				return false;
 			}
 
-			// Verificar se há novas mensagens comparando com a última resposta
-			const previousMessages = lastReceivedMessagesRef.current;
+			// Verificar se há novas mensagens do assistente
+			const assistantMessages = currentMessages.filter(
+				(msg) => msg.role === "assistant"
+			);
 
-			// Se o número de mensagens aumentou, provavelmente há novas
-			if (currentMessages.length > previousMessages.length) {
-				console.log("Detectado aumento no número de mensagens");
+			// Se houver mensagens do assistente
+			if (assistantMessages.length > 0) {
+				// Pegar a mensagem mais recente
+				const latestMessage = assistantMessages[assistantMessages.length - 1];
 
-				// Filtrar apenas mensagens do assistente
-				const assistantMessages = currentMessages.filter(
-					(msg) => msg.role === "assistant"
+				// Verificar se essa mensagem já está na UI
+				const messageExists = messages.some(
+					(msg) =>
+						msg.role === "assistant" && msg.content === latestMessage.content
 				);
 
-				if (assistantMessages.length > 0) {
-					// Pegar a mensagem mais recente
-					const latestMessage = assistantMessages[assistantMessages.length - 1];
+				if (!messageExists) {
+					console.log("Nova mensagem detectada:", latestMessage.content);
 
-					// Log detalhado da mensagem para debug
-					console.log("Mensagem mais recente do assistente:", latestMessage);
+					// Atualizar o timestamp da última mensagem conhecida
+					lastMessageTimestampRef.current =
+						latestMessage.timestamp || new Date().toISOString();
 
-					// Verificar se essa mensagem já está na UI
-					const messageExists = messages.some(
-						(msg) =>
-							msg.role === "assistant" && msg.content === latestMessage.content
-					);
+					// Substituir mensagem temporária ou adicionar nova
+					setMessages((prev) => {
+						// Verificar se há uma mensagem temporária para substituir
+						const hasTempMessage = prev.some((msg) => msg.isTemporary);
 
-					if (!messageExists) {
-						console.log(
-							"Nova mensagem encontrada para exibir no chat:",
-							latestMessage.content
-						);
+						if (hasTempMessage) {
+							// Substituir a mensagem temporária
+							return prev.map((msg) =>
+								msg.isTemporary
+									? {
+											role: "assistant",
+											content: latestMessage.content,
+											timestamp: latestMessage.timestamp,
+									  }
+									: msg
+							);
+						} else {
+							// Adicionar nova mensagem
+							return [
+								...prev,
+								{
+									role: "assistant",
+									content: latestMessage.content,
+									timestamp: latestMessage.timestamp,
+								},
+							];
+						}
+					});
 
-						// Atualizar o timestamp da última mensagem conhecida
-						lastMessageTimestampRef.current =
-							latestMessage.timestamp || new Date().toISOString();
+					// Atualizar a referência de mensagens conhecidas
+					lastReceivedMessagesRef.current = currentMessages;
 
-						// Substituir mensagem temporária ou adicionar nova
-						setMessages((prev) => {
-							// Verificar se há uma mensagem temporária para substituir
-							const hasTempMessage = prev.some((msg) => msg.isTemporary);
-
-							if (hasTempMessage) {
-								// Substituir a mensagem temporária
-								return prev.map((msg) =>
-									msg.isTemporary
-										? {
-												role: "assistant",
-												content: latestMessage.content,
-												timestamp: latestMessage.timestamp,
-										  }
-										: msg
-								);
-							} else {
-								// Adicionar nova mensagem
-								return [
-									...prev,
-									{
-										role: "assistant",
-										content: latestMessage.content,
-										timestamp: latestMessage.timestamp,
-									},
-								];
-							}
-						});
-
-						// Atualizar a referência de mensagens conhecidas
-						lastReceivedMessagesRef.current = currentMessages;
-
-						setIsTyping(false);
-						return true; // Mensagem encontrada - pode parar polling
-					}
+					setIsTyping(false);
+					return true; // Mensagem encontrada - pode parar polling
 				}
 			}
 
@@ -176,7 +155,7 @@ const AIChat = () => {
 		}
 	}, [API_URL, conversationId, messages]);
 
-	// Função para iniciar polling específico após enviar mensagem - MELHORADA NOVAMENTE
+	// Função para iniciar polling após enviar mensagem - MELHORADA
 	const startMessagePolling = useCallback(() => {
 		// Limpar polling anterior se existir
 		if (pollingIntervalRef.current) {
@@ -187,7 +166,7 @@ const AIChat = () => {
 		setPollingActive(true);
 		pollingAttemptsRef.current = 0;
 
-		const maxAttempts = 30; // 2.5 minutos (30 * 5 segundos) - AUMENTADO MAIS
+		const maxAttempts = 60; // 5 minutos (60 * 5 segundos)
 		const checkInterval = 5000; // 5 segundos
 
 		// Verificar imediatamente antes de iniciar o intervalo
@@ -235,204 +214,222 @@ const AIChat = () => {
 		});
 	}, [checkNewMessages]);
 
+	// Iniciar WebSocket e gerenciar reconexão
+	const setupWebSocket = useCallback(() => {
+		// Limpar timeout de reconexão anterior, se existir
+		if (reconnectTimeoutRef.current) {
+			clearTimeout(reconnectTimeoutRef.current);
+			reconnectTimeoutRef.current = null;
+		}
+
+		// Converter a URL HTTP para WebSocket (ws:// ou wss://)
+		const wsProtocol = API_URL.startsWith("https") ? "wss" : "ws";
+		const wsBaseUrl = API_URL.replace(/^https?:\/\//, `${wsProtocol}://`);
+
+		// Incluir ID da conversa como query param se disponível
+		let wsUrl = `${wsBaseUrl}/ws/${clientId}`;
+		if (conversationId) {
+			wsUrl += `?conversation_id=${conversationId}`;
+		}
+
+		console.log(`Conectando ao WebSocket: ${wsUrl}`);
+		setConnectionStatus("connecting");
+
+		// Criar nova conexão WebSocket
+		const newSocket = new WebSocket(wsUrl);
+		socketRef.current = newSocket;
+
+		newSocket.onopen = () => {
+			console.log("WebSocket conectado!");
+			setConnectionStatus("connected");
+			socketRetryCountRef.current = 0; // Resetar contador de tentativas
+
+			// Se tivermos um ID de conversa, enviar para associação
+			if (conversationId) {
+				try {
+					const associationMessage = JSON.stringify({
+						conversation_id: conversationId,
+						client_id: clientId,
+					});
+					console.log(`Enviando associação: ${associationMessage}`);
+					newSocket.send(associationMessage);
+				} catch (err) {
+					console.error("Erro ao enviar mensagem de associação:", err);
+				}
+			}
+		};
+
+		newSocket.onmessage = (event) => {
+			console.log("Mensagem recebida via WebSocket:", event.data);
+			try {
+				const data = JSON.parse(event.data);
+
+				if (data.type === "message") {
+					// Nova mensagem recebida do assistente via WebSocket
+					console.log("Mensagem do assistente via WebSocket:", data.content);
+
+					// Atualizar timestamp da última mensagem
+					lastMessageTimestampRef.current =
+						data.timestamp || new Date().toISOString();
+
+					// Verificar se já temos essa mensagem
+					const messageExists = messages.some(
+						(msg) => msg.role === "assistant" && msg.content === data.content
+					);
+
+					if (!messageExists) {
+						// Substituir mensagem temporária ou adicionar nova
+						setMessages((prev) => {
+							// Verificar se há uma mensagem temporária para substituir
+							const hasTempMessage = prev.some((msg) => msg.isTemporary);
+
+							if (hasTempMessage) {
+								// Substituir a mensagem temporária
+								return prev.map((msg) =>
+									msg.isTemporary
+										? {
+												role: "assistant",
+												content: data.content,
+												timestamp: data.timestamp,
+										  }
+										: msg
+								);
+							} else {
+								// Adicionar nova mensagem
+								return [
+									...prev,
+									{
+										role: "assistant",
+										content: data.content,
+										timestamp: data.timestamp,
+									},
+								];
+							}
+						});
+
+						// Desativar polling se estiver ativo
+						if (pollingActive && pollingIntervalRef.current) {
+							clearInterval(pollingIntervalRef.current);
+							pollingIntervalRef.current = null;
+							setPollingActive(false);
+						}
+					}
+
+					setIsTyping(false);
+				} else if (data.type === "connection_status") {
+					console.log("Status da conexão WebSocket:", data.status);
+					setConnectionStatus(data.status);
+				} else if (data.type === "association_success") {
+					console.log("Associação de ID bem-sucedida:", data.message);
+					// Verificar se há um novo ID de conversa no response
+					if (data.conversation_id && !conversationId) {
+						setConversationId(data.conversation_id);
+					}
+				} else if (data.type === "message_history") {
+					console.log("Recebido histórico de mensagens:", data.messages);
+
+					// Processar apenas se tiver mensagens
+					if (data.messages && data.messages.length > 0) {
+						// Procurar a última mensagem do assistente
+						const assistantMessages = data.messages.filter(
+							(msg) => msg.role === "assistant"
+						);
+
+						if (assistantMessages.length > 0) {
+							const latestAssistantMsg =
+								assistantMessages[assistantMessages.length - 1];
+
+							// Verificar se já temos essa mensagem
+							const messageExists = messages.some(
+								(msg) =>
+									msg.role === "assistant" &&
+									msg.content === latestAssistantMsg.content
+							);
+
+							if (!messageExists) {
+								console.log(
+									"Nova mensagem do histórico a ser exibida:",
+									latestAssistantMsg.content
+								);
+
+								// Substituir mensagem temporária ou adicionar nova
+								setMessages((prev) => {
+									// Verificar se há uma mensagem temporária para substituir
+									const hasTempMessage = prev.some((msg) => msg.isTemporary);
+
+									if (hasTempMessage) {
+										// Substituir a mensagem temporária
+										return prev.map((msg) =>
+											msg.isTemporary
+												? {
+														role: "assistant",
+														content: latestAssistantMsg.content,
+														timestamp: latestAssistantMsg.timestamp,
+												  }
+												: msg
+										);
+									} else {
+										// Adicionar nova mensagem
+										return [
+											...prev,
+											{
+												role: "assistant",
+												content: latestAssistantMsg.content,
+												timestamp: latestAssistantMsg.timestamp,
+											},
+										];
+									}
+								});
+
+								// Desativar polling se estiver ativo
+								if (pollingActive && pollingIntervalRef.current) {
+									clearInterval(pollingIntervalRef.current);
+									pollingIntervalRef.current = null;
+									setPollingActive(false);
+								}
+
+								setIsTyping(false);
+							}
+						}
+					}
+				}
+			} catch (error) {
+				console.error("Erro ao processar mensagem WebSocket:", error);
+			}
+		};
+
+		newSocket.onclose = (event) => {
+			console.log("WebSocket desconectado:", event.code, event.reason);
+			setConnectionStatus((prev) => (prev === "error" ? "error" : "offline"));
+
+			// Tentar reconectar após alguns segundos se não foi fechado intencionalmente
+			if (event.code !== 1000) {
+				socketRetryCountRef.current += 1;
+				const delay = Math.min(
+					30000,
+					1000 * Math.pow(2, socketRetryCountRef.current)
+				); // Exponential backoff até 30s
+				console.log(`Tentando reconectar em ${delay / 1000} segundos...`);
+
+				reconnectTimeoutRef.current = setTimeout(() => {
+					console.log("Tentando reconexão WebSocket...");
+					setupWebSocket();
+				}, delay);
+			}
+		};
+
+		newSocket.onerror = (error) => {
+			console.error("Erro no WebSocket:", error);
+			setConnectionStatus("error");
+		};
+
+		// Guardar referência ao socket
+		setSocket(newSocket);
+	}, [API_URL, clientId, conversationId, messages]);
+
 	// Configuração do WebSocket - MELHORADA
 	useEffect(() => {
 		// Estabelecer conexão WebSocket quando o componente montar
-		const setupWebSocket = () => {
-			// Converter a URL HTTP para WebSocket (ws:// ou wss://)
-			const wsProtocol = API_URL.startsWith("https") ? "wss" : "ws";
-			const wsBaseUrl = API_URL.replace(/^https?:\/\//, `${wsProtocol}://`);
-
-			// Incluir ID da conversa como query param se disponível
-			let wsUrl = `${wsBaseUrl}/ws/${clientId}`;
-			if (conversationId) {
-				wsUrl += `?conversation_id=${conversationId}`;
-			}
-
-			console.log("Conectando ao WebSocket:", wsUrl);
-
-			// Criar nova conexão WebSocket
-			const newSocket = new WebSocket(wsUrl);
-			socketRef.current = newSocket;
-
-			newSocket.onopen = () => {
-				console.log("WebSocket conectado!");
-				setConnectionStatus("connected");
-
-				// Se tivermos um ID de conversa, enviar para associação
-				if (conversationId) {
-					try {
-						const associationMessage = JSON.stringify({
-							conversation_id: conversationId,
-							client_id: clientId,
-						});
-						console.log(`Enviando associação: ${associationMessage}`);
-						newSocket.send(associationMessage);
-					} catch (err) {
-						console.error("Erro ao enviar mensagem de associação:", err);
-					}
-				}
-			};
-
-			newSocket.onmessage = (event) => {
-				console.log("Mensagem recebida via WebSocket:", event.data);
-				try {
-					const data = JSON.parse(event.data);
-
-					if (data.type === "message") {
-						// Nova mensagem recebida do assistente via WebSocket
-						console.log("Mensagem do assistente via WebSocket:", data.content);
-
-						// Atualizar timestamp da última mensagem
-						lastMessageTimestampRef.current =
-							data.timestamp || new Date().toISOString();
-
-						// Verificar se já temos essa mensagem
-						const messageExists = messages.some(
-							(msg) => msg.role === "assistant" && msg.content === data.content
-						);
-
-						if (!messageExists) {
-							// Substituir mensagem temporária ou adicionar nova
-							setMessages((prev) => {
-								// Verificar se há uma mensagem temporária para substituir
-								const hasTempMessage = prev.some((msg) => msg.isTemporary);
-
-								if (hasTempMessage) {
-									// Substituir a mensagem temporária
-									return prev.map((msg) =>
-										msg.isTemporary
-											? {
-													role: "assistant",
-													content: data.content,
-													timestamp: data.timestamp,
-											  }
-											: msg
-									);
-								} else {
-									// Adicionar nova mensagem
-									return [
-										...prev,
-										{
-											role: "assistant",
-											content: data.content,
-											timestamp: data.timestamp,
-										},
-									];
-								}
-							});
-
-							// Desativar polling se estiver ativo
-							if (pollingActive && pollingIntervalRef.current) {
-								clearInterval(pollingIntervalRef.current);
-								pollingIntervalRef.current = null;
-								setPollingActive(false);
-							}
-						}
-
-						setIsTyping(false);
-					} else if (data.type === "connection_status") {
-						console.log("Status da conexão WebSocket:", data.status);
-						setConnectionStatus(data.status);
-					} else if (data.type === "association_success") {
-						console.log("Associação de ID bem-sucedida:", data.message);
-						// Verificar se há um novo ID de conversa no response
-						if (data.conversation_id && !conversationId) {
-							setConversationId(data.conversation_id);
-						}
-					} else if (data.type === "message_history") {
-						console.log("Recebido histórico de mensagens:", data.messages);
-
-						// Processar apenas se tiver mensagens
-						if (data.messages && data.messages.length > 0) {
-							// Procurar a última mensagem do assistente
-							const assistantMessages = data.messages.filter(
-								(msg) => msg.role === "assistant"
-							);
-
-							if (assistantMessages.length > 0) {
-								const latestAssistantMsg =
-									assistantMessages[assistantMessages.length - 1];
-
-								// Verificar se já temos essa mensagem
-								const messageExists = messages.some(
-									(msg) =>
-										msg.role === "assistant" &&
-										msg.content === latestAssistantMsg.content
-								);
-
-								if (!messageExists) {
-									console.log(
-										"Nova mensagem do histórico a ser exibida:",
-										latestAssistantMsg.content
-									);
-
-									// Substituir mensagem temporária ou adicionar nova
-									setMessages((prev) => {
-										// Verificar se há uma mensagem temporária para substituir
-										const hasTempMessage = prev.some((msg) => msg.isTemporary);
-
-										if (hasTempMessage) {
-											// Substituir a mensagem temporária
-											return prev.map((msg) =>
-												msg.isTemporary
-													? {
-															role: "assistant",
-															content: latestAssistantMsg.content,
-															timestamp: latestAssistantMsg.timestamp,
-													  }
-													: msg
-											);
-										} else {
-											// Adicionar nova mensagem
-											return [
-												...prev,
-												{
-													role: "assistant",
-													content: latestAssistantMsg.content,
-													timestamp: latestAssistantMsg.timestamp,
-												},
-											];
-										}
-									});
-
-									// Desativar polling se estiver ativo
-									if (pollingActive && pollingIntervalRef.current) {
-										clearInterval(pollingIntervalRef.current);
-										pollingIntervalRef.current = null;
-										setPollingActive(false);
-									}
-
-									setIsTyping(false);
-								}
-							}
-						}
-					}
-				} catch (error) {
-					console.error("Erro ao processar mensagem WebSocket:", error);
-				}
-			};
-
-			newSocket.onclose = (event) => {
-				console.log("WebSocket desconectado:", event.code, event.reason);
-				setConnectionStatus((prev) => (prev === "error" ? "error" : "offline"));
-
-				// Tentar reconectar após alguns segundos se não foi fechado intencionalmente
-				if (event.code !== 1000) {
-					console.log("Tentando reconectar em 5 segundos...");
-					setTimeout(setupWebSocket, 5000);
-				}
-			};
-
-			newSocket.onerror = (error) => {
-				console.error("Erro no WebSocket:", error);
-				setConnectionStatus("error");
-			};
-
-			// Guardar referência ao socket
-			setSocket(newSocket);
-		};
-
 		setupWebSocket();
 
 		// Função de limpeza para fechar o socket quando o componente for desmontado
@@ -447,8 +444,12 @@ const AIChat = () => {
 			if (pollingIntervalRef.current) {
 				clearInterval(pollingIntervalRef.current);
 			}
+
+			if (reconnectTimeoutRef.current) {
+				clearTimeout(reconnectTimeoutRef.current);
+			}
 		};
-	}, [API_URL, clientId, conversationId, messages]);
+	}, [setupWebSocket]);
 
 	// Efeito para associar ID de conversa quando ele mudar
 	useEffect(() => {
@@ -459,13 +460,13 @@ const AIChat = () => {
 			socketRef.current.readyState === WebSocket.OPEN
 		) {
 			try {
+				console.log(
+					`Enviando associação explícita: conversationId=${conversationId}, clientId=${clientId}`
+				);
 				const associationMessage = JSON.stringify({
 					conversation_id: conversationId,
 					client_id: clientId,
 				});
-				console.log(
-					`Enviando associação após atualização de conversationId: ${associationMessage}`
-				);
 				socketRef.current.send(associationMessage);
 
 				// Também fazer uma verificação de mensagens imediata
@@ -507,12 +508,12 @@ const AIChat = () => {
 		checkApiStatus();
 	}, [API_URL]);
 
-	// Enviar mensagem com tratamento de segurança aprimorado
+	// Enviar mensagem para o backend
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
 
-			// IMPORTANTE: Usando SEMPRE o endpoint chat-n8n que utiliza o webhook do N8N
+			// Usar endpoint chat-n8n que utiliza o webhook do N8N
 			const apiUrl = `${API_URL}/api/chat-n8n`;
 
 			console.log(`Enviando para API endpoint: ${apiUrl}`);
@@ -532,14 +533,11 @@ const AIChat = () => {
 					headers: {
 						"Content-Type": "application/json",
 					},
-					// Não enviar cookies com a solicitação para reduzir riscos
 					withCredentials: false,
 				}
 			);
 
-			// Log da resposta para depuração
-			console.log("Resposta do servidor:", response);
-
+			console.log("Resposta do servidor:", response.data);
 			return response.data;
 		} catch (error) {
 			console.error(`Erro ao enviar mensagem:`, error);
@@ -547,7 +545,7 @@ const AIChat = () => {
 		}
 	};
 
-	// Manipulador para envio de mensagens - MODIFICADO PARA HANDLING ASSÍNCRONO
+	// Manipulador para envio de mensagens
 	const handleSendMessage = async () => {
 		if (input.trim() === "" || isTyping) return;
 
@@ -589,7 +587,6 @@ const AIChat = () => {
 				}
 
 				setConversationId(response.conversation_id);
-				// WebSocket association is handled by the useEffect
 			}
 
 			// Verifica se a resposta indica processamento assíncrono
@@ -663,6 +660,14 @@ const AIChat = () => {
 		}
 	};
 
+	// Forçar reconexão do WebSocket
+	const handleReconnect = () => {
+		if (socketRef.current) {
+			socketRef.current.close();
+		}
+		setupWebSocket();
+	};
+
 	// Renderização do chat
 	return (
 		<div className="ai-chat-page">
@@ -680,6 +685,8 @@ const AIChat = () => {
 							<i className="fas fa-circle"></i>
 							{connectionStatus === "connected"
 								? "Conectado"
+								: connectionStatus === "connecting"
+								? "Conectando..."
 								: connectionStatus === "error"
 								? "Erro de Conexão"
 								: "Modo Offline"}
@@ -703,6 +710,15 @@ const AIChat = () => {
 									<i className="fas fa-sync-alt"></i>
 								</button>
 							</div>
+						)}
+
+						{connectionStatus !== "connected" && (
+							<button
+								className="btn btn-secondary btn-sm"
+								onClick={handleReconnect}
+							>
+								<i className="fas fa-plug"></i> Reconectar
+							</button>
 						)}
 					</div>
 				</div>

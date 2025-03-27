@@ -1,5 +1,3 @@
-# Arquivo traefik-config.yml atualizado
-
 http:
   middlewares:
     https-redirect:
@@ -9,9 +7,7 @@ http:
     cors-headers:
       headers:
         accessControlAllowOriginList:
-          - "https://nexiosdigital.com"
-          - "https://www.nexiosdigital.com"
-          - "http://localhost:3000"
+          - "*"  # Permitir todas as origens para solucionar problemas de CORS
         accessControlAllowMethods:
           - GET
           - POST
@@ -23,6 +19,11 @@ http:
         accessControlAllowCredentials: true
         accessControlMaxAge: 100
         addVaryHeader: true
+    websocket-headers:
+      headers:
+        customRequestHeaders:
+          Connection: "Upgrade"
+          Upgrade: "websocket"
 
   routers:
     # Roteador para API
@@ -34,26 +35,35 @@ http:
       tls: {}
       middlewares:
         - "cors-headers"
+      priority: 100
     
-    # Roteador para WebSockets
+    # Roteador para WebSockets - Configurado corretamente para WebSockets
     websockets:
       rule: "Host(`nexiosdigital.com`, `www.nexiosdigital.com`) && PathPrefix(`/ws`)"
       service: "nexiosdigital-backend"
       entryPoints:
         - "websecure"
       tls: {}
+      middlewares:
+        - "cors-headers"
+        - "websocket-headers"  # Adicionar middleware específico para WebSockets
+      priority: 100
   
     # Roteador para redirecionamento HTTP para HTTPS
     http-catchall:
       rule: "hostregexp(`{host:.+}`)"
-      service: "nexiosdigital-backend"
+      service: "noop@internal"
       entryPoints:
         - "web"
       middlewares:
         - "https-redirect"
-  
+      priority: 1
+
   services:
     nexiosdigital-backend:
       loadBalancer:
         servers:
           - url: "http://backend:8000"
+        passHostHeader: true
+        responseForwarding:
+          flushInterval: "100ms"  # Melhorar resposta para WebSockets
