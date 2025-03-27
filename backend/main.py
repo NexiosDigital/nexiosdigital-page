@@ -84,6 +84,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: List[Dict[str, Any]] = []
         self.connection_map = {}  # Mapa de conversas para clientes
+        self.client_to_convo_map = {}  # Mapa reverso: cliente -> conversa
 
     async def connect(self, websocket: WebSocket, client_id: str):
         await websocket.accept()
@@ -116,6 +117,11 @@ class ConnectionManager:
                         del self.connection_map[conv_id]
                         logger.info(f"Conversa {conv_id} removida do mapeamento (sem clientes)")
             
+            # Limpar do mapa reverso
+            if client_id in self.client_to_convo_map:
+                del self.client_to_convo_map[client_id]
+                logger.info(f"Cliente {client_id} removido do mapa reverso")
+                
             logger.info(f"Cliente {client_id} desconectado. Total de conexões: {len(self.active_connections)}")
             self._log_active_connections()
         else:
@@ -135,6 +141,8 @@ class ConnectionManager:
         
         if not sent:
             logger.warning(f"Não foi possível enviar mensagem para cliente {client_id} - não encontrado")
+            
+        return sent
 
     async def broadcast(self, message: Dict[str, Any]):
         logger.info(f"Broadcasting message to {len(self.active_connections)} connections")
@@ -153,8 +161,13 @@ class ConnectionManager:
             
         if client_id not in self.connection_map[conversation_id]:
             self.connection_map[conversation_id].append(client_id)
+            
+            # Atualizar também o mapa reverso
+            self.client_to_convo_map[client_id] = conversation_id
+            
             logger.info(f"Cliente {client_id} associado à conversa {conversation_id}")
             logger.info(f"Mapa de conversas atualizado: {json.dumps(self.connection_map, indent=2)}")
+            logger.info(f"Mapa reverso atualizado: {json.dumps(self.client_to_convo_map, indent=2)}")
     
     async def send_to_conversation(self, conversation_id: str, message: Dict[str, Any]):
         """
@@ -162,21 +175,29 @@ class ConnectionManager:
         """
         if conversation_id not in self.connection_map:
             logger.warning(f"Tentativa de enviar mensagem para conversa {conversation_id} que não está no mapa")
-            return False
+            # Tentativa de encontrar o client_id que corresponde à conversa pelo ID
+            matching_clients = [
+                c["client_id"] for c in self.active_connections 
+                if c["client_id"] == conversation_id or 
+                   (c["client_id"] in self.client_to_convo_map and 
+                    self.client_to_convo_map[c["client_id"]] == conversation_id)
+            ]
             
-        clients = self.connection_map[conversation_id]
+            if matching_clients:
+                logger.info(f"Encontrado cliente correspondente pelo ID: {matching_clients[0]}")
+                # Associar retroativamente
+                self.associate_conversation(matching_clients[0], conversation_id)
+            else:
+                logger.warning(f"Nenhum cliente encontrado para conversa {conversation_id}")
+                return False
+            
+        clients = self.connection_map.get(conversation_id, [])
         logger.info(f"Enviando mensagem para {len(clients)} clientes da conversa {conversation_id}")
         
         success = False
         for client_id in clients:
-            for connection in self.active_connections:
-                if connection["client_id"] == client_id:
-                    try:
-                        await connection["websocket"].send_json(message)
-                        logger.info(f"Mensagem enviada para cliente {client_id} da conversa {conversation_id}")
-                        success = True
-                    except Exception as e:
-                        logger.error(f"Erro ao enviar para cliente {client_id}: {str(e)}")
+            msg_sent = await self.send_personal_message(message, client_id)
+            success = success or msg_sent
         
         return success
     
@@ -191,6 +212,10 @@ class ConnectionManager:
         logger.info(f"=== MAPA DE CONVERSAS ===")
         for conv_id, clients in self.connection_map.items():
             logger.info(f"Conversa {conv_id}: {len(clients)} clientes - {clients}")
+            
+        logger.info(f"=== MAPA REVERSO ===")
+        for client_id, conv_id in self.client_to_convo_map.items():
+            logger.info(f"Cliente {client_id} -> Conversa {conv_id}")
 
 manager = ConnectionManager()
 
@@ -237,7 +262,7 @@ def store_message(conversation_id: str, message: Dict[str, Any]):
 def get_conversation_history(conversation_id: str) -> List[Dict[str, Any]]:
     return conversation_store.get(conversation_id, [])
 
-# Endpoint WebSocket para diagnóstico - ATUALIZADO
+# Endpoint WebSocket para diagnóstico - MELHORADO
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """
@@ -267,6 +292,16 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 "message": f"Associado à conversa: {conversation_id}",
                 "conversation_id": conversation_id
             })
+            
+            # Enviar as mensagens já existentes para esse cliente
+            messages = get_conversation_history(conversation_id)
+            if messages:
+                logger.info(f"Enviando histórico inicial de {len(messages)} mensagens para cliente {client_id}")
+                await websocket.send_json({
+                    "type": "message_history",
+                    "messages": messages,
+                    "conversation_id": conversation_id
+                })
         
         # Enviar mensagem de confirmação de conexão
         await websocket.send_json({
@@ -289,10 +324,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     # Verificar se há ID de conversa para associação
                     if 'conversation_id' in json_data:
                         conv_id = json_data['conversation_id']
-                        logger.info(f"Cliente {client_id} associado à conversa {conv_id}")
+                        client_to_associate = json_data.get('client_id', client_id)
+                        
+                        logger.info(f"Cliente {client_to_associate} associado à conversa {conv_id}")
                         
                         # Registrar associação no gerenciador
-                        manager.associate_conversation(client_id, conv_id)
+                        manager.associate_conversation(client_to_associate, conv_id)
                         
                         # Confirmar associação
                         await websocket.send_json({
@@ -477,18 +514,65 @@ async def chat_n8n(request: ChatRequest):
         logger.error(f"Erro ao enviar mensagem para N8N: {str(e)}")
         return {"response": f"Desculpe, houve um erro ao processar sua mensagem. Detalhes: {str(e)}", "conversation_id": conversation_id}
 
-# NOVO: Endpoint para recuperar mensagens de uma conversa
+# MELHORADO: Endpoint para recuperar mensagens de uma conversa
 @app.get("/api/messages/{conversation_id}")
-async def get_messages(conversation_id: str):
+async def get_messages(conversation_id: str, after: Optional[str] = None):
     """
     Recupera todas as mensagens de uma conversa específica
+    Opcionalmente pode filtrar mensagens após um determinado timestamp
     """
     logger.info(f"Solicitação para recuperar mensagens da conversa: {conversation_id}")
+    
+    # Obter todas as mensagens
     messages = get_conversation_history(conversation_id)
+    
+    # Filtrar por timestamp se o parâmetro 'after' estiver presente
+    if after:
+        try:
+            after_date = datetime.fromisoformat(after.replace('Z', '+00:00'))
+            filtered_messages = []
+            
+            for msg in messages:
+                # Extrair o timestamp da mensagem com tratamento para diferentes formatos
+                msg_timestamp = msg.get("timestamp")
+                if msg_timestamp:
+                    # Converter para datetime para comparação
+                    try:
+                        # Tentar o formato ISO
+                        msg_date = datetime.fromisoformat(msg_timestamp.replace('Z', '+00:00'))
+                    except (ValueError, TypeError):
+                        # Fallback para o formato datetime padrão
+                        try:
+                            msg_date = datetime.strptime(msg_timestamp, "%Y-%m-%d %H:%M:%S.%f")
+                        except (ValueError, TypeError):
+                            # Se falhar, usar o timestamp atual
+                            msg_date = datetime.now()
+                    
+                    # Adicionar apenas mensagens mais recentes que o timestamp fornecido
+                    if msg_date > after_date:
+                        filtered_messages.append(msg)
+                else:
+                    # Se não tiver timestamp, incluir por precaução
+                    filtered_messages.append(msg)
+            
+            messages = filtered_messages
+            logger.info(f"Filtradas {len(messages)} mensagens após {after}")
+        except ValueError:
+            logger.warning(f"Formato de timestamp inválido: {after}")
+    
+    # Log detalhado para debug
+    if messages:
+        logger.info(f"Total de {len(messages)} mensagens encontradas para conversa {conversation_id}")
+        for i, msg in enumerate(messages):
+            logger.debug(f"Mensagem {i+1}: {msg.get('role')} - {msg.get('timestamp')} - {msg.get('content')[:30]}...")
+    else:
+        logger.info(f"Nenhuma mensagem encontrada para conversa {conversation_id}")
     
     return {
         "conversation_id": conversation_id,
-        "messages": messages
+        "messages": messages,
+        "count": len(messages),
+        "timestamp": datetime.now().isoformat()
     }
 
 # NOVO: Endpoint de teste para simples verificação
@@ -536,7 +620,7 @@ async def test_callback_post(request: Request):
         "timestamp": datetime.now().isoformat()
     }
 
-# ATUALIZADO: Endpoint para receber callbacks do N8N com verificação de token e melhor mapeamento
+# MELHORADO: Endpoint para receber callbacks do N8N com verificação de token e melhor mapeamento
 @app.post("/api/n8n-callback")
 async def n8n_callback(request: Request, token: str = Depends(verify_token)):
     """
@@ -620,27 +704,58 @@ async def n8n_callback(request: Request, token: str = Depends(verify_token)):
             if send_success:
                 logger.info(f"Mensagem enviada com sucesso via WebSocket para a conversa {conversation_id}")
             else:
-                # Método alternativo: tentar enviar a cada conexão que corresponda ao ID da conversa
-                # (Redundante com o novo sistema, mas mantido como fallback)
-                sent_to_client = False
-                logger.warning(f"Falha no envio via mapeamento, tentando método tradicional para {len(manager.active_connections)} conexões")
+                # MÉTODO ADICIONAL: Tentar buscar por clientes que possam estar conectados 
+                # mas não associados à conversa
+                logger.warning(f"Falha no envio via mapeamento padrão, buscando clientes não mapeados...")
                 
+                # Verificar todas as conexões ativas
                 for conn in manager.active_connections:
-                    if conn["client_id"] == conversation_id:
+                    client_id = conn["client_id"]
+                    # Verificar se o cliente tem o mesmo ID que a conversa ou parte do ID
+                    if (client_id == conversation_id or 
+                        conversation_id.startswith(client_id) or 
+                        client_id.startswith(conversation_id)):
+                        
+                        logger.info(f"Encontrado cliente {client_id} com ID relacionado à conversa {conversation_id}")
+                        
+                        # Associar esse cliente à conversa
+                        manager.associate_conversation(client_id, conversation_id)
+                        
                         try:
+                            # Tentar enviar a mensagem
                             await conn["websocket"].send_json(ws_message)
-                            logger.info(f"Mensagem enviada via método alternativo para cliente {conversation_id}")
-                            sent_to_client = True
+                            logger.info(f"Mensagem enviada para cliente {client_id} via associação retroativa")
+                            send_success = True
                         except Exception as e:
                             logger.error(f"Erro ao enviar via WebSocket: {str(e)}", exc_info=True)
                 
-                if not sent_to_client:
-                    logger.warning(f"Nenhum cliente WebSocket ativo para conversa {conversation_id}. Mensagem apenas armazenada.")
+                if not send_success:
+                    # ÚLTIMO RECURSO: Broadcast para todas as conexões
+                    if len(manager.active_connections) > 0 and len(manager.active_connections) < 5:
+                        logger.warning(f"Tentando broadcast para todas as {len(manager.active_connections)} conexões ativas")
+                        try:
+                            await manager.broadcast(ws_message)
+                            logger.info("Mensagem enviada via broadcast")
+                            send_success = True
+                        except Exception as e:
+                            logger.error(f"Erro ao fazer broadcast: {str(e)}", exc_info=True)
+                    
+                    if not send_success:
+                        logger.warning(f"Não foi possível entregar a mensagem via WebSocket. A mensagem foi apenas armazenada e estará disponível via polling.")
+            
+            # ADICIONAL: Log de evento para verificar nas ferramentas
+            logger.info(f"=== EVENTO N8N PROCESSADO ===")
+            logger.info(f"Conversa: {conversation_id}")
+            logger.info(f"Enviado via WebSocket: {send_success}")
+            logger.info(f"Resposta: {response_text[:50]}...")
+            logger.info(f"Timestamp: {timestamp}")
+            logger.info(f"===========================")
             
             return {
                 "success": True, 
                 "message": "Callback processado com sucesso",
-                "sent_via_websocket": send_success
+                "sent_via_websocket": send_success,
+                "stored": True
             }
             
         except json.JSONDecodeError as e:
