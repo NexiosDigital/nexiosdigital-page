@@ -79,33 +79,118 @@ class N8nResponse(BaseModel):
     timestamp: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
-# Gerenciador de WebSockets
+# Gerenciador de WebSockets ATUALIZADO
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[Dict[str, Any]] = []
+        self.connection_map = {}  # Mapa de conversas para clientes
 
     async def connect(self, websocket: WebSocket, client_id: str):
         await websocket.accept()
         self.active_connections.append({"websocket": websocket, "client_id": client_id})
         logger.info(f"Cliente {client_id} conectado. Total de conexões: {len(self.active_connections)}")
+        
+        # Para debug - listar todas as conexões ativas após cada nova conexão
+        self._log_active_connections()
 
     def disconnect(self, websocket: WebSocket):
+        # Encontrar a conexão a remover
+        connection_to_remove = None
         for connection in self.active_connections:
             if connection["websocket"] == websocket:
-                self.active_connections.remove(connection)
-                logger.info(f"Cliente {connection['client_id']} desconectado. Total de conexões: {len(self.active_connections)}")
+                connection_to_remove = connection
                 break
+                
+        if connection_to_remove:
+            client_id = connection_to_remove["client_id"]
+            self.active_connections.remove(connection_to_remove)
+            
+            # Remover do mapa de conversas
+            for conv_id, clients in list(self.connection_map.items()):
+                if client_id in clients:
+                    clients.remove(client_id)
+                    logger.info(f"Cliente {client_id} removido do mapeamento da conversa {conv_id}")
+                    
+                    # Remover a conversa se não tiver mais clientes
+                    if not clients:
+                        del self.connection_map[conv_id]
+                        logger.info(f"Conversa {conv_id} removida do mapeamento (sem clientes)")
+            
+            logger.info(f"Cliente {client_id} desconectado. Total de conexões: {len(self.active_connections)}")
+            self._log_active_connections()
+        else:
+            logger.warning("Tentativa de desconectar um WebSocket que não está na lista de conexões ativas")
 
     async def send_personal_message(self, message: Dict[str, Any], client_id: str):
+        sent = False
         for connection in self.active_connections:
             if connection["client_id"] == client_id:
-                await connection["websocket"].send_json(message)
-                break
+                try:
+                    await connection["websocket"].send_json(message)
+                    logger.info(f"Mensagem enviada para cliente {client_id}")
+                    sent = True
+                    break
+                except Exception as e:
+                    logger.error(f"Erro ao enviar mensagem para cliente {client_id}: {str(e)}")
+        
+        if not sent:
+            logger.warning(f"Não foi possível enviar mensagem para cliente {client_id} - não encontrado")
 
     async def broadcast(self, message: Dict[str, Any]):
-        logger.info(f"Broadcasting message to {len(self.active_connections)} connections: {message}")
+        logger.info(f"Broadcasting message to {len(self.active_connections)} connections")
         for connection in self.active_connections:
-            await connection["websocket"].send_json(message)
+            try:
+                await connection["websocket"].send_json(message)
+            except Exception as e:
+                logger.error(f"Erro ao fazer broadcast para cliente {connection['client_id']}: {str(e)}")
+    
+    def associate_conversation(self, client_id: str, conversation_id: str):
+        """
+        Associa um cliente a uma conversa para facilitar o envio de mensagens
+        """
+        if conversation_id not in self.connection_map:
+            self.connection_map[conversation_id] = []
+            
+        if client_id not in self.connection_map[conversation_id]:
+            self.connection_map[conversation_id].append(client_id)
+            logger.info(f"Cliente {client_id} associado à conversa {conversation_id}")
+            logger.info(f"Mapa de conversas atualizado: {json.dumps(self.connection_map, indent=2)}")
+    
+    async def send_to_conversation(self, conversation_id: str, message: Dict[str, Any]):
+        """
+        Envia mensagem para todos os clientes associados a uma conversa
+        """
+        if conversation_id not in self.connection_map:
+            logger.warning(f"Tentativa de enviar mensagem para conversa {conversation_id} que não está no mapa")
+            return False
+            
+        clients = self.connection_map[conversation_id]
+        logger.info(f"Enviando mensagem para {len(clients)} clientes da conversa {conversation_id}")
+        
+        success = False
+        for client_id in clients:
+            for connection in self.active_connections:
+                if connection["client_id"] == client_id:
+                    try:
+                        await connection["websocket"].send_json(message)
+                        logger.info(f"Mensagem enviada para cliente {client_id} da conversa {conversation_id}")
+                        success = True
+                    except Exception as e:
+                        logger.error(f"Erro ao enviar para cliente {client_id}: {str(e)}")
+        
+        return success
+    
+    def _log_active_connections(self):
+        """
+        Registra informações detalhadas sobre conexões ativas
+        """
+        logger.info(f"=== CONEXÕES ATIVAS: {len(self.active_connections)} ===")
+        for i, conn in enumerate(self.active_connections):
+            logger.info(f"Conexão #{i+1}: client_id={conn['client_id']}")
+        
+        logger.info(f"=== MAPA DE CONVERSAS ===")
+        for conv_id, clients in self.connection_map.items():
+            logger.info(f"Conversa {conv_id}: {len(clients)} clientes - {clients}")
 
 manager = ConnectionManager()
 
@@ -152,40 +237,100 @@ def store_message(conversation_id: str, message: Dict[str, Any]):
 def get_conversation_history(conversation_id: str) -> List[Dict[str, Any]]:
     return conversation_store.get(conversation_id, [])
 
-# Endpoint WebSocket para diagnóstico
+# Endpoint WebSocket para diagnóstico - ATUALIZADO
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """
+    Endpoint WebSocket aprimorado com melhor rastreamento de conexões
+    """
     logger.debug(f"Nova tentativa de conexão WebSocket de cliente: {client_id}")
     logger.debug(f"Headers da conexão: {websocket.headers}")
     logger.debug(f"Parâmetros da solicitação: {websocket.query_params}")
     
+    # Verificar se o ID de conversa foi fornecido como query param
+    conversation_id = None
+    if "conversation_id" in websocket.query_params:
+        conversation_id = websocket.query_params["conversation_id"]
+        logger.info(f"ID de conversa fornecido via query params: {conversation_id}")
+    
     try:
+        # Aceitar conexão
         await manager.connect(websocket, client_id)
         
-        # Enviar mensagem de confirmação
+        # Se já temos o ID de conversa, associar imediatamente
+        if conversation_id:
+            manager.associate_conversation(client_id, conversation_id)
+            
+            # Enviar confirmação de associação
+            await websocket.send_json({
+                "type": "association_success",
+                "message": f"Associado à conversa: {conversation_id}",
+                "conversation_id": conversation_id
+            })
+        
+        # Enviar mensagem de confirmação de conexão
         await websocket.send_json({
             "type": "connection_status",
             "status": "connected",
             "message": "Conexão WebSocket estabelecida com sucesso!"
         })
         
-        # Loop para manter a conexão ativa
+        # Loop para manter a conexão ativa e processar mensagens
         while True:
             try:
+                # Receber dados do cliente
                 data = await websocket.receive_text()
                 logger.debug(f"Recebido do cliente {client_id}: {data}")
                 
                 try:
-                    # Tentar processar como JSON para verificar se contém conversation_id
+                    # Tentar processar como JSON
                     json_data = json.loads(data)
+                    
+                    # Verificar se há ID de conversa para associação
                     if 'conversation_id' in json_data:
-                        logger.info(f"Cliente {client_id} associado à conversa {json_data['conversation_id']}")
+                        conv_id = json_data['conversation_id']
+                        logger.info(f"Cliente {client_id} associado à conversa {conv_id}")
+                        
+                        # Registrar associação no gerenciador
+                        manager.associate_conversation(client_id, conv_id)
+                        
+                        # Confirmar associação
                         await websocket.send_json({
                             "type": "association_success",
-                            "message": f"Associado à conversa: {json_data['conversation_id']}"
+                            "message": f"Associado à conversa: {conv_id}",
+                            "conversation_id": conv_id
                         })
-                except:
-                    # Se não for JSON, enviar eco simples
+                        
+                        # Se houver histórico de mensagens para essa conversa, enviar
+                        messages = get_conversation_history(conv_id)
+                        if messages:
+                            logger.info(f"Enviando histórico de {len(messages)} mensagens para cliente {client_id}")
+                            await websocket.send_json({
+                                "type": "message_history",
+                                "messages": messages,
+                                "conversation_id": conv_id
+                            })
+                            
+                    # Processar comandos especiais
+                    elif 'command' in json_data:
+                        if json_data['command'] == 'get_messages' and 'conversation_id' in json_data:
+                            # Comando para obter mensagens de uma conversa
+                            conv_id = json_data['conversation_id']
+                            messages = get_conversation_history(conv_id)
+                            await websocket.send_json({
+                                "type": "message_history",
+                                "messages": messages,
+                                "conversation_id": conv_id
+                            })
+                        elif json_data['command'] == 'ping':
+                            # Comando para verificar se a conexão está viva
+                            await websocket.send_json({
+                                "type": "pong",
+                                "timestamp": datetime.now().isoformat()
+                            })
+                
+                except json.JSONDecodeError:
+                    # Se não for JSON válido, enviar eco simples
                     await websocket.send_json({
                         "type": "echo",
                         "original": data,
@@ -196,9 +341,19 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 logger.info(f"Cliente {client_id} desconectou normalmente")
                 break
             except Exception as e:
-                logger.error(f"Erro ao processar mensagem de {client_id}: {str(e)}")
-                break
-                
+                logger.error(f"Erro ao processar mensagem de {client_id}: {str(e)}", exc_info=True)
+                # Tentar enviar mensagem de erro antes de decidir se fecha
+                try:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Erro ao processar mensagem: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                except:
+                    # Se não conseguir enviar, provavelmente a conexão já está quebrada
+                    logger.error(f"Não foi possível enviar mensagem de erro para {client_id}, conexão provavelmente perdida")
+                    break
+    
     except WebSocketDisconnect:
         logger.warning(f"Cliente {client_id} desconectou durante o handshake")
     except Exception as e:
@@ -381,108 +536,117 @@ async def test_callback_post(request: Request):
         "timestamp": datetime.now().isoformat()
     }
 
-# CORRIGIDO: Endpoint para receber callbacks do N8N com verificação de token de autenticação
+# ATUALIZADO: Endpoint para receber callbacks do N8N com verificação de token e melhor mapeamento
 @app.post("/api/n8n-callback")
 async def n8n_callback(request: Request, token: str = Depends(verify_token)):
     """
-    Endpoint para receber respostas processadas pelo N8N com verificação de token obrigatória.
+    Endpoint para receber respostas processadas pelo N8N com envio direto via WebSocket.
     """
-    logger.info(f"Recebendo callback do N8N endpoint (autenticado)")
-    logger.info(f"Request method: {request.method}")
-    logger.info(f"Request headers: {request.headers}")
+    logger.info(f"Recebendo callback do N8N (autenticado)")
+    logger.debug(f"Request method: {request.method}")
+    logger.debug(f"Request headers: {request.headers}")
     
     # Log do corpo bruto para depuração
     body = await request.body()
     body_str = body.decode('utf-8')
-    logger.info(f"Corpo bruto da requisição: {body_str}")
+    logger.info(f"Corpo da requisição: {body_str[:200]}...")
     
     try:
         # Tentar analisar JSON
-        if body_str:
-            try:
-                data_dict = json.loads(body_str)
-                logger.info(f"Dados JSON analisados: {data_dict}")
-                
-                # Validar campos obrigatórios manualmente para fornecer melhores mensagens de erro
-                if "conversation_id" not in data_dict:
-                    logger.warning("conversation_id não encontrado no payload")
-                if "original_message" not in data_dict:
-                    logger.warning("original_message não encontrado no payload")
-                if "processed_response" not in data_dict:
-                    logger.warning("processed_response não encontrado no payload")
-                
-                # Extrair campos necessários com fallbacks
-                conversation_id = data_dict.get("conversation_id")
-                if not conversation_id:
-                    # Tentar encontrar conversation_id em qualquer campo
-                    for key, value in data_dict.items():
-                        if isinstance(value, str) and "conversation" in key.lower():
-                            conversation_id = value
-                            break
-                
-                if not conversation_id:
-                    logger.error("Não foi possível encontrar conversation_id no payload")
-                    return {"error": True, "message": "conversation_id não encontrado"}
-                
-                # Extrair resposta com fallbacks
-                response_text = data_dict.get("processed_response")
-                if not response_text:
-                    response_text = data_dict.get("response", 
-                                    data_dict.get("content", 
-                                    data_dict.get("message", 
-                                    "Resposta recebida mas formato do conteúdo desconhecido")))
-                
-                # Guardar timestamp com fallback
-                timestamp = data_dict.get("timestamp", datetime.now().isoformat())
-                
-                # Extrair mensagem original com fallback
-                original_message = data_dict.get("original_message", "Mensagem original não disponível")
-                
-                # Extrair metadata com fallback
-                metadata = data_dict.get("metadata", {})
-                
-                # Armazenar a mensagem do assistente
-                store_message(
-                    conversation_id, 
-                    {
-                        "role": "assistant", 
-                        "content": response_text,
-                        "timestamp": timestamp,
-                        "metadata": metadata
-                    }
-                )
-                
-                # Tentar enviar via WebSocket para clientes conectados
+        if not body_str:
+            logger.error("Corpo da requisição vazio")
+            return {"error": True, "message": "Corpo da requisição vazio"}
+            
+        try:
+            data_dict = json.loads(body_str)
+            logger.info(f"Dados JSON analisados: {str(data_dict)[:200]}...")
+            
+            # Extrair ID da conversa (obrigatório)
+            conversation_id = data_dict.get("conversation_id")
+            if not conversation_id:
+                # Tentar buscar de outros campos possíveis
+                for key, value in data_dict.items():
+                    if isinstance(value, str) and "conversation" in key.lower():
+                        conversation_id = value
+                        break
+            
+            if not conversation_id:
+                logger.error("conversation_id não encontrado no payload")
+                return {"error": True, "message": "conversation_id não encontrado"}
+            
+            # Extrair resposta processada (obrigatório)
+            response_text = data_dict.get("processed_response")
+            if not response_text:
+                # Tentar campos alternativos
+                response_text = data_dict.get("response", 
+                              data_dict.get("content", 
+                              data_dict.get("message", 
+                              data_dict.get("text", None))))
+            
+            if not response_text:
+                logger.error("Resposta processada não encontrada no payload")
+                return {"error": True, "message": "Resposta processada não encontrada"}
+            
+            # Extrair outros campos com fallbacks
+            timestamp = data_dict.get("timestamp", datetime.now().isoformat())
+            original_message = data_dict.get("original_message", "Mensagem original não disponível")
+            metadata = data_dict.get("metadata", {})
+            
+            logger.info(f"Resposta N8N para conversa {conversation_id} recebida: {response_text[:100]}...")
+            
+            # Armazenar a mensagem do assistente no histórico
+            message_data = {
+                "role": "assistant", 
+                "content": response_text,
+                "timestamp": timestamp,
+                "metadata": metadata
+            }
+            
+            store_message(conversation_id, message_data)
+            logger.info(f"Mensagem do assistente armazenada para conversa {conversation_id}")
+            
+            # Preparar mensagem para envio via WebSocket
+            ws_message = {
+                "type": "message",
+                "content": response_text,
+                "timestamp": timestamp,
+                "conversation_id": conversation_id
+            }
+            
+            # Tentar enviar mensagem via WebSocket para todos os clientes da conversa
+            logger.info(f"Tentando enviar mensagem via WebSocket para a conversa {conversation_id}")
+            send_success = await manager.send_to_conversation(conversation_id, ws_message)
+            
+            if send_success:
+                logger.info(f"Mensagem enviada com sucesso via WebSocket para a conversa {conversation_id}")
+            else:
+                # Método alternativo: tentar enviar a cada conexão que corresponda ao ID da conversa
+                # (Redundante com o novo sistema, mas mantido como fallback)
                 sent_to_client = False
-                logger.debug(f"Conexões ativas atuais: {len(manager.active_connections)}")
-                logger.debug(f"Detalhes das conexões ativas: {[conn['client_id'] for conn in manager.active_connections]}")
+                logger.warning(f"Falha no envio via mapeamento, tentando método tradicional para {len(manager.active_connections)} conexões")
                 
                 for conn in manager.active_connections:
-                    logger.debug(f"Verificando conexão com client_id: {conn['client_id']}")
                     if conn["client_id"] == conversation_id:
                         try:
-                            await conn["websocket"].send_json({
-                                "type": "message",
-                                "content": response_text,
-                                "timestamp": timestamp
-                            })
-                            logger.info(f"Resposta enviada ao cliente {conversation_id} via WebSocket")
+                            await conn["websocket"].send_json(ws_message)
+                            logger.info(f"Mensagem enviada via método alternativo para cliente {conversation_id}")
                             sent_to_client = True
                         except Exception as e:
                             logger.error(f"Erro ao enviar via WebSocket: {str(e)}", exc_info=True)
-                    else:
-                        logger.debug(f"Client ID {conn['client_id']} não corresponde ao ID da conversa {conversation_id}")
                 
                 if not sent_to_client:
-                    logger.info(f"Nenhum cliente WebSocket ativo para conversa {conversation_id}. Mensagem armazenada.")
-                
-                return {"success": True, "message": "Callback processado com sucesso"}
-            except json.JSONDecodeError as e:
-                logger.error(f"Falha ao analisar JSON: {str(e)}")
-                return {"error": True, "message": f"JSON inválido: {str(e)}"}
-        else:
-            logger.error("Corpo da requisição vazio")
-            return {"error": True, "message": "Corpo da requisição vazio"}
+                    logger.warning(f"Nenhum cliente WebSocket ativo para conversa {conversation_id}. Mensagem apenas armazenada.")
+            
+            return {
+                "success": True, 
+                "message": "Callback processado com sucesso",
+                "sent_via_websocket": send_success
+            }
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Falha ao analisar JSON: {str(e)}")
+            return {"error": True, "message": f"JSON inválido: {str(e)}"}
+            
     except Exception as e:
         logger.error(f"Erro ao processar callback do N8N: {str(e)}", exc_info=True)
         return {"error": True, "message": str(e)}
