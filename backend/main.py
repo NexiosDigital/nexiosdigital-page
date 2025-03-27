@@ -245,32 +245,48 @@ manager = ConnectionManager()
 
 # Função para verificar autenticação para o endpoint N8N - Com depuração melhorada
 async def verify_token(authorization: Optional[str] = Header(None)):
-    logger.debug(f"Token recebido: {authorization}")
-    logger.debug(f"Token esperado: Bearer {N8N_API_TOKEN}")
+    logger.debug(f"Token recebido completo: '{authorization}'")
+    logger.debug(f"Token esperado: 'Bearer {N8N_API_TOKEN}'")
     
     if not authorization:
         logger.error("Erro: Token de autorização ausente")
         raise HTTPException(status_code=401, detail="Token de autorização ausente")
     
     try:
-        scheme, token = authorization.split()
-        logger.debug(f"Esquema: {scheme}, Token: {token}")
-        
-        if scheme.lower() != "bearer":
-            logger.error("Erro: Formato de autorização inválido")
-            raise HTTPException(status_code=401, detail="Formato de autorização inválido")
-        
-        # Comparar os tokens diretamente
-        logger.debug(f"Comparando token recebido '{token}' com token esperado '{N8N_API_TOKEN}'")
-        if token != N8N_API_TOKEN:
-            logger.error("Erro: Token inválido")
-            raise HTTPException(status_code=401, detail="Token inválido")
-        
-        logger.info("Token validado com sucesso!")
-        return token
-    except ValueError:
-        logger.error("Erro: Formato de autorização inválido (não conseguiu separar)")
-        raise HTTPException(status_code=401, detail="Formato de autorização inválido")
+        # Verificar se o authorization já contém o token completo
+        if authorization == N8N_API_TOKEN:
+            logger.info("Token validado com sucesso (formato simples)!")
+            return N8N_API_TOKEN
+            
+        # Verificar se é 'Bearer token'
+        try:
+            scheme, token = authorization.split()
+            logger.debug(f"Esquema: '{scheme}', Token: '{token}'")
+            
+            if scheme.lower() != "bearer":
+                logger.warning(f"Esquema inesperado: '{scheme}' (esperava 'bearer')")
+                
+            # Verificar o token, independentemente do esquema
+            if token == N8N_API_TOKEN:
+                logger.info("Token validado com sucesso!")
+                return token
+            else:
+                logger.error(f"Erro: Token inválido. Recebido: '{token}', Esperado: '{N8N_API_TOKEN}'")
+                raise HTTPException(status_code=401, detail="Token inválido")
+                
+        except ValueError:
+            # Tentar verificar o token completo como último recurso
+            logger.warning("Não foi possível separar esquema e token. Tentando verificar token completo...")
+            if authorization.strip() == N8N_API_TOKEN:
+                logger.info("Token validado com sucesso (sem esquema)!")
+                return authorization.strip()
+            else:
+                logger.error(f"Erro: Valor não reconhecido no header Authorization: '{authorization}'")
+                raise HTTPException(status_code=401, detail="Formato de autorização inválido")
+                
+    except Exception as e:
+        logger.error(f"Erro inesperado na verificação do token: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"Erro na verificação: {str(e)}")
 
 # Função auxiliar para armazenar mensagens (pode ser substituída por uma implementação de BD)
 conversation_store = {}
