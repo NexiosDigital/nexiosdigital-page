@@ -19,12 +19,12 @@ const ContactSection = () => {
 						{/* E-mail Card */}
 						<div className="contact-card">
 							<div className="contact-card-content">
-								<div className="contact-icon-wrapper">
+								<div className="card-header">
 									<div className="contact-icon email-icon">
 										<i className="fas fa-envelope"></i>
 									</div>
+									<h3 className="contact-card-title">E-mail</h3>
 								</div>
-								<h3 className="contact-card-title">E-mail</h3>
 								<p className="contact-card-text">
 									Envie-nos uma mensagem para obter mais informações ou
 									solicitar uma demonstração.
@@ -41,12 +41,12 @@ const ContactSection = () => {
 						{/* WhatsApp Card */}
 						<div className="contact-card">
 							<div className="contact-card-content">
-								<div className="contact-icon-wrapper">
+								<div className="card-header">
 									<div className="contact-icon whatsapp-icon">
 										<i className="fab fa-whatsapp"></i>
 									</div>
+									<h3 className="contact-card-title">WhatsApp</h3>
 								</div>
-								<h3 className="contact-card-title">WhatsApp</h3>
 								<p className="contact-card-text">
 									Entre em contato diretamente com nossa equipe para um
 									atendimento mais rápido.
@@ -65,12 +65,12 @@ const ContactSection = () => {
 						{/* Localização Card */}
 						<div className="contact-card">
 							<div className="contact-card-content">
-								<div className="contact-icon-wrapper">
+								<div className="card-header">
 									<div className="contact-icon location-icon">
 										<i className="fas fa-map-marker-alt"></i>
 									</div>
+									<h3 className="contact-card-title">Localização</h3>
 								</div>
-								<h3 className="contact-card-title">Localização</h3>
 								<p className="contact-card-text">Estamos localizados em:</p>
 								<div className="contact-address">
 									Campos dos Goytacazes
