@@ -1,11 +1,22 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ContactForm from "../components/ContactForm";
 import "../styles/Home.css";
 
 const Home = () => {
-	// Efeito de animação aos elementos quando a página carrega
+	const [scrollPosition, setScrollPosition] = useState(0);
+	const [visibleCards, setVisibleCards] = useState([]);
+	const [activeStep, setActiveStep] = useState(null);
+	const [isWorkflowInView, setIsWorkflowInView] = useState(false);
+
+	// Efeito para detectar scroll e animar elementos quando entram na viewport
 	useEffect(() => {
+		const handleScroll = () => {
+			setScrollPosition(window.scrollY);
+		};
+
+		window.addEventListener("scroll", handleScroll);
+
 		const animatedElements = document.querySelectorAll(".animate-on-scroll");
 
 		const observer = new IntersectionObserver(
@@ -22,219 +33,397 @@ const Home = () => {
 
 		animatedElements.forEach((el) => observer.observe(el));
 
+		// Detectar cards de serviço e seção de workflow quando entram na viewport
+		const serviceObserver = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						setVisibleCards((prevVisibleCards) => {
+							if (!prevVisibleCards.includes(entry.target.id)) {
+								return [...prevVisibleCards, entry.target.id];
+							}
+							return prevVisibleCards;
+						});
+					}
+				});
+			},
+			{ threshold: 0.2 }
+		);
+
+		const workflowObserver = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting) {
+					setIsWorkflowInView(true);
+				}
+			},
+			{ threshold: 0.3 }
+		);
+
+		const cards = document.querySelectorAll(".service-card");
+		cards.forEach((card) => serviceObserver.observe(card));
+
+		const workflowSection = document.querySelector(".workflow-section");
+		if (workflowSection) {
+			workflowObserver.observe(workflowSection);
+		}
+
 		return () => {
 			animatedElements.forEach((el) => observer.unobserve(el));
+			cards.forEach((card) => serviceObserver.unobserve(card));
+			window.removeEventListener("scroll", handleScroll);
+			if (workflowSection) {
+				workflowObserver.unobserve(workflowSection);
+			}
 		};
 	}, []);
 
+	// Função para calcular o estilo parallax baseado no scroll
+	const calculateParallaxStyle = (factor) => {
+		return {
+			transform: `translateY(${scrollPosition * factor}px)`,
+			transition: "transform 0.1s ease-out",
+		};
+	};
+
+	// Alterna a etapa ativa do workflow
+	const handleStepHover = (stepId) => {
+		setActiveStep(stepId);
+	};
+
+	// Reseta a etapa ativa ao sair da área
+	const handleStepLeave = () => {
+		setActiveStep(null);
+	};
+
+	// Dados dos serviços
+	const services = [
+		{
+			id: "ai-customer-service",
+			icon: "fa-robot",
+			title: "Agentes de IA para Atendimento",
+			description:
+				"Automatize o atendimento ao cliente com agentes de IA que respondem perguntas frequentes, resolvem problemas comuns e escalonam para humanos quando necessário.",
+			url: "/services/ai-customer-service",
+		},
+		{
+			id: "sales-automation",
+			icon: "fa-chart-line",
+			title: "Automação de Vendas",
+			description:
+				"Aumente a eficiência da sua equipe de vendas com ferramentas de IA que qualificam leads, personalizam comunicações e preveem o comportamento do cliente.",
+			url: "/services/sales-automation",
+		},
+		{
+			id: "process-automation",
+			icon: "fa-cogs",
+			title: "Automação de Processos",
+			description:
+				"Elimine tarefas repetitivas e reduza erros humanos com sistemas inteligentes que automatizam fluxos de trabalho em toda a organização.",
+			url: "/services/process-automation",
+		},
+		{
+			id: "clickup-automation",
+			icon: "fa-tasks",
+			title: "Automação com ClickUp",
+			description:
+				"Potencialize seu ClickUp com automações personalizadas que integram IA para otimizar seus fluxos de trabalho, aumentar a produtividade e reduzir erros.",
+			url: "/services/clickup-automation",
+		},
+	];
+
+	// Dados das etapas de trabalho
+	const workflowSteps = [
+		{
+			id: "step-1",
+			number: "01",
+			title: "Análise de Necessidades",
+			description:
+				"Estudamos profundamente seus processos de negócio para identificar oportunidades de automação e melhoria com IA.",
+		},
+		{
+			id: "step-2",
+			number: "02",
+			title: "Estratégia Personalizada",
+			description:
+				"Desenvolvemos um plano detalhado com as soluções de IA mais adequadas para seu negócio e objetivos específicos.",
+		},
+		{
+			id: "step-3",
+			number: "03",
+			title: "Implementação Avançada",
+			description:
+				"Nossa equipe de especialistas implementa as soluções com foco em integração perfeita com seus sistemas existentes.",
+		},
+		{
+			id: "step-4",
+			number: "04",
+			title: "Monitoramento e Otimização",
+			description:
+				"Acompanhamos o desempenho das soluções e fazemos ajustes contínuos para maximizar resultados a longo prazo.",
+		},
+	];
+
 	return (
 		<div className="home-page">
-			{/* Hero Section */}
-			<section className="hero">
+			{/* Hero Section Modernizada */}
+			<section className="modern-hero">
+				{/* Elementos de background com efeito parallax */}
 				<div className="hero-bg-elements">
-					<div className="hero-circle hero-circle-1"></div>
-					<div className="hero-circle hero-circle-2"></div>
-					<div className="hero-line hero-line-1"></div>
-					<div className="hero-line hero-line-2"></div>
+					<div
+						className="hero-particle hero-particle-1"
+						style={calculateParallaxStyle(-0.05)}
+					></div>
+					<div
+						className="hero-particle hero-particle-2"
+						style={calculateParallaxStyle(-0.03)}
+					></div>
+					<div
+						className="hero-particle hero-particle-3"
+						style={calculateParallaxStyle(-0.07)}
+					></div>
+					<div
+						className="hero-particle hero-particle-4"
+						style={calculateParallaxStyle(-0.02)}
+					></div>
+					<div className="hero-grid"></div>
+					<div
+						className="hero-gradient-circle"
+						style={calculateParallaxStyle(-0.01)}
+					></div>
 				</div>
 
 				<div className="container">
-					<h1 className="animate-on-scroll">
-						Transformando Negócios
-						<br />
-						com <span className="text-gradient">Inteligência Artificial</span>
-					</h1>
-					<p className="animate-on-scroll">
-						A Nexios Digital desenvolve soluções de IA inovadoras que
-						automatizam processos, melhoram a experiência do cliente e
-						impulsionam o crescimento dos negócios.
-					</p>
-					<div className="hero-buttons animate-on-scroll">
-						<Link to="/about" className="btn btn-primary">
-							<i className="fas fa-rocket"></i> Conheça Nossa Empresa
-						</Link>
-						<Link to="/ai-chat" className="btn btn-secondary">
-							<i className="fas fa-robot"></i> Experimente Nossa IA
-						</Link>
+					<div className="hero-content">
+						<div className="hero-text">
+							<h1 className="hero-title animate-on-scroll">
+								Transformando Negócios com{" "}
+								<span className="text-gradient">Inteligência Artificial</span>
+							</h1>
+							<p className="hero-description animate-on-scroll">
+								A Nexios Digital desenvolve soluções de IA inovadoras que
+								automatizam processos, melhoram a experiência do cliente e
+								impulsionam o crescimento dos negócios.
+							</p>
+							<div className="hero-buttons animate-on-scroll">
+								<Link to="/about" className="btn btn-primary">
+									<span className="btn-content">
+										<i className="fas fa-rocket"></i>
+										<span>Conheça Nossa Empresa</span>
+									</span>
+									<span className="btn-glow"></span>
+								</Link>
+								<Link to="/ai-chat" className="btn btn-secondary">
+									<span className="btn-content">
+										<i className="fas fa-robot"></i>
+										<span>Experimente Nossa IA</span>
+									</span>
+								</Link>
+							</div>
+						</div>
+
+						<div className="hero-visual animate-on-scroll">
+							<div className="chat-interface">
+								<div className="chat-header">
+									<div className="chat-title">
+										<i className="fas fa-robot"></i>
+										<span>Assistente Nexios AI</span>
+									</div>
+									<div className="chat-status">
+										<span className="status-dot"></span>
+										<span>Online</span>
+									</div>
+								</div>
+								<div className="chat-messages">
+									<div className="message message-ai">
+										<div className="message-content">
+											Olá! Como posso ajudar a transformar seu negócio hoje?
+										</div>
+									</div>
+									<div className="message message-user">
+										<div className="message-content">
+											Preciso aumentar a eficiência do atendimento ao cliente.
+										</div>
+									</div>
+									<div className="message message-ai">
+										<div className="message-content">
+											Perfeito! Nossos agentes de IA podem reduzir o tempo de
+											resposta em até 70% e automatizar até 80% das perguntas
+											frequentes.
+										</div>
+									</div>
+									<div className="message message-ai typing">
+										<div className="typing-indicator">
+											<span></span>
+											<span></span>
+											<span></span>
+										</div>
+									</div>
+								</div>
+								<div className="chat-input">
+									<input
+										type="text"
+										placeholder="Digite sua mensagem..."
+										disabled
+									/>
+									<button className="send-button">
+										<i className="fas fa-paper-plane"></i>
+									</button>
+								</div>
+							</div>
+							<div className="hero-visual-decoration"></div>
+						</div>
 					</div>
 
 					<div className="hero-stats animate-on-scroll">
-						<div className="hero-stat">
-							<div className="hero-stat-number">
-								<span className="counter">98</span>%
+						<div className="stat-item">
+							<div className="stat-value">
+								98<span className="percent">%</span>
 							</div>
-							<div className="hero-stat-label">
-								Satisfação
-								<br />
-								de clientes
-							</div>
+							<div className="stat-label">Satisfação de clientes</div>
 						</div>
-						<div className="hero-stat">
-							<div className="hero-stat-number">
-								<span className="counter">65</span>%
+						<div className="stat-item">
+							<div className="stat-value">
+								65<span className="percent">%</span>
 							</div>
-							<div className="hero-stat-label">
-								Redução de
-								<br />
-								custos
-							</div>
+							<div className="stat-label">Redução de custos</div>
 						</div>
-						<div className="hero-stat">
-							<div className="hero-stat-number">
-								<span className="counter">4.5</span>×
+						<div className="stat-item">
+							<div className="stat-value">
+								4.5<span className="multiply">×</span>
 							</div>
-							<div className="hero-stat-label">
-								Aumento de
-								<br />
-								eficiência
-							</div>
+							<div className="stat-label">Aumento de eficiência</div>
 						</div>
 					</div>
-				</div>
 
-				<div className="hero-scroll-indicator">
-					<span>Role para explorar</span>
-					<i className="fas fa-chevron-down"></i>
+					<div className="hero-scroll-indicator">
+						<span>Role para explorar</span>
+						<i className="fas fa-chevron-down"></i>
+					</div>
 				</div>
 			</section>
 
-			{/* Serviços Section */}
-			<section className="section services-section">
+			{/* Serviços Section - Modernizada */}
+			<section className="modern-services-section">
+				<div className="background-elements">
+					<div className="bg-gradient-circle"></div>
+					<div className="bg-pattern"></div>
+				</div>
+
 				<div className="container">
-					<h2 className="section-title">Nossos Serviços</h2>
-					<p className="section-subtitle">
-						Combinamos tecnologia de ponta com expertise em negócios para criar
-						soluções que transformam empresas.
-					</p>
+					<div className="section-header">
+						<h2 className="section-title">Nossos Serviços</h2>
+						<div className="title-underline"></div>
+						<p className="section-subtitle">
+							Combinamos tecnologia de ponta com expertise em negócios para
+							criar soluções que transformam empresas.
+						</p>
+					</div>
 
 					<div className="services-grid">
-						<div className="service-card card">
-							<div className="card-icon">
-								<i className="fas fa-robot"></i>
+						{services.map((service, index) => (
+							<div
+								key={service.id}
+								id={service.id}
+								className={`service-card ${
+									visibleCards.includes(service.id) ? "visible" : ""
+								}`}
+								style={{ animationDelay: `${index * 0.1}s` }}
+							>
+								<div className="card-inner">
+									<div className="card-front">
+										<div className="service-icon">
+											<i className={`fas ${service.icon}`}></i>
+											<div className="icon-bg"></div>
+										</div>
+										<h3 className="service-title">{service.title}</h3>
+										<p className="service-description">{service.description}</p>
+									</div>
+									<div className="card-action">
+										<Link to={service.url} className="service-link">
+											<span>Saiba mais</span>
+											<i className="fas fa-arrow-right"></i>
+										</Link>
+									</div>
+								</div>
+								<div className="card-shine"></div>
 							</div>
-							<div className="card-content">
-								<h3 className="card-title">Agentes de IA para Atendimento</h3>
-								<p>
-									Automatize o atendimento ao cliente com agentes de IA que
-									respondem perguntas frequentes, resolvem problemas comuns e
-									escalonam para humanos quando necessário.
-								</p>
-								<Link to="/services/ai-customer-service" className="card-link">
-									Saiba mais <i className="fas fa-arrow-right"></i>
-								</Link>
-							</div>
-						</div>
+						))}
+					</div>
 
-						<div className="service-card card">
-							<div className="card-icon">
-								<i className="fas fa-chart-line"></i>
-							</div>
-							<div className="card-content">
-								<h3 className="card-title">Automação de Vendas</h3>
-								<p>
-									Aumente a eficiência da sua equipe de vendas com ferramentas
-									de IA que qualificam leads, personalizam comunicações e
-									preveem o comportamento do cliente.
-								</p>
-								<Link to="/services/sales-automation" className="card-link">
-									Saiba mais <i className="fas fa-arrow-right"></i>
-								</Link>
-							</div>
-						</div>
-
-						<div className="service-card card">
-							<div className="card-icon">
-								<i className="fas fa-cogs"></i>
-							</div>
-							<div className="card-content">
-								<h3 className="card-title">Automação de Processos</h3>
-								<p>
-									Elimine tarefas repetitivas e reduza erros humanos com
-									sistemas inteligentes que automatizam fluxos de trabalho em
-									toda a organização.
-								</p>
-								<Link to="/services/process-automation" className="card-link">
-									Saiba mais <i className="fas fa-arrow-right"></i>
-								</Link>
-							</div>
-						</div>
-
-						{/* Novo serviço de Automação com ClickUp */}
-						<div className="service-card card">
-							<div className="card-icon">
-								<i className="fas fa-tasks"></i>
-							</div>
-							<div className="card-content">
-								<h3 className="card-title">
-									Automação de Processos Internos (com ClickUp)
-								</h3>
-								<p>
-									Potencialize seu ClickUp com automações personalizadas que
-									integram IA para otimizar seus fluxos de trabalho, aumentar a
-									produtividade e reduzir erros.
-								</p>
-								<Link to="/services/clickup-automation" className="card-link">
-									Saiba mais <i className="fas fa-arrow-right"></i>
-								</Link>
-							</div>
-						</div>
+					<div className="service-cta">
+						<Link to="/about" className="services-button">
+							Ver todos os serviços
+							<i className="fas fa-long-arrow-alt-right"></i>
+						</Link>
 					</div>
 				</div>
 			</section>
 
-			{/* Como Funciona Section */}
-			<section className="section how-it-works-section">
+			{/* Como Funciona Section - Modernizada */}
+			<section className="workflow-section">
+				<div className="workflow-bg">
+					<div className="workflow-bg-grid"></div>
+					<div className="workflow-bg-gradient"></div>
+				</div>
+
 				<div className="container">
-					<h2 className="section-title animate-on-scroll">Como Trabalhamos</h2>
-					<p className="section-subtitle animate-on-scroll">
-						Nossa abordagem metódica garante resultados excepcionais para cada
-						cliente
-					</p>
+					<div className="workflow-header">
+						<h2 className="workflow-title">Como Trabalhamos</h2>
+						<div className="title-separator"></div>
+						<p className="workflow-subtitle">
+							Nossa abordagem metódica garante resultados excepcionais para cada
+							cliente
+						</p>
+					</div>
 
-					<div className="steps-container">
-						<div className="step animate-on-scroll">
-							<div className="step-number">01</div>
-							<div className="step-content">
-								<h3>Análise de Necessidades</h3>
-								<p>
-									Estudamos profundamente seus processos de negócio para
-									identificar oportunidades de automação e melhoria com IA.
-								</p>
-							</div>
+					<div
+						className={`workflow-timeline ${isWorkflowInView ? "animate" : ""}`}
+					>
+						<div className="timeline-line">
+							<div
+								className="timeline-progress"
+								style={{
+									height: activeStep
+										? `calc(100% * ${
+												parseInt(activeStep.split("-")[1]) /
+												workflowSteps.length
+										  })`
+										: "0%",
+								}}
+							></div>
 						</div>
 
-						<div className="step animate-on-scroll">
-							<div className="step-number">02</div>
-							<div className="step-content">
-								<h3>Estratégia Personalizada</h3>
-								<p>
-									Desenvolvemos um plano detalhado com as soluções de IA mais
-									adequadas para seu negócio e objetivos específicos.
-								</p>
-							</div>
+						<div className="workflow-steps">
+							{workflowSteps.map((step, index) => (
+								<div
+									key={step.id}
+									id={step.id}
+									className={`workflow-step ${
+										activeStep === step.id ? "active" : ""
+									} ${isWorkflowInView ? "visible" : ""}`}
+									style={{ animationDelay: `${0.2 + index * 0.2}s` }}
+									onMouseEnter={() => handleStepHover(step.id)}
+									onMouseLeave={handleStepLeave}
+								>
+									<div className="step-connector"></div>
+									<div className="step-number">
+										<span>{step.number}</span>
+										<div className="number-glow"></div>
+									</div>
+									<div className="step-content">
+										<h3 className="step-title">{step.title}</h3>
+										<p className="step-description">{step.description}</p>
+									</div>
+								</div>
+							))}
 						</div>
+					</div>
 
-						<div className="step animate-on-scroll">
-							<div className="step-number">03</div>
-							<div className="step-content">
-								<h3>Implementação Avançada</h3>
-								<p>
-									Nossa equipe de especialistas implementa as soluções com foco
-									em integração perfeita com seus sistemas existentes.
-								</p>
-							</div>
-						</div>
-
-						<div className="step animate-on-scroll">
-							<div className="step-number">04</div>
-							<div className="step-content">
-								<h3>Monitoramento e Otimização</h3>
-								<p>
-									Acompanhamos o desempenho das soluções e fazemos ajustes
-									contínuos para maximizar resultados a longo prazo.
-								</p>
-							</div>
-						</div>
+					<div className={`workflow-cta ${isWorkflowInView ? "visible" : ""}`}>
+						<Link to="/about" className="workflow-button">
+							<span>Conheça Nossa Metodologia</span>
+							<i className="fas fa-arrow-right"></i>
+						</Link>
 					</div>
 				</div>
 			</section>
@@ -535,7 +724,7 @@ const Home = () => {
 							</div>
 						</div>
 
-						{/* Substituir o formulário existente pelo novo componente ContactForm */}
+						{/* Formulário de contato */}
 						<ContactForm />
 					</div>
 				</div>

@@ -5,7 +5,6 @@ import "../styles/Navbar.css";
 const Navbar = () => {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [scrolled, setScrolled] = useState(false);
-	const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
 
 	// Função para alternar o estado do menu mobile
 	const toggleMenu = () => {
@@ -52,11 +51,6 @@ const Navbar = () => {
 		};
 	}, []);
 
-	// Lidar com o hover/click no dropdown de serviços
-	const toggleServicesDropdown = () => {
-		setServicesDropdownOpen(!servicesDropdownOpen);
-	};
-
 	return (
 		<>
 			<nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
@@ -71,39 +65,6 @@ const Navbar = () => {
 						<div className="navbar-links desktop-links">
 							<Link to="/">Home</Link>
 							<Link to="/about">Sobre Nós</Link>
-
-							{/* Dropdown de serviços */}
-							<div className="dropdown-container">
-								<button
-									className="dropdown-trigger"
-									onMouseEnter={() => setServicesDropdownOpen(true)}
-									onMouseLeave={() => setServicesDropdownOpen(false)}
-									onClick={toggleServicesDropdown}
-								>
-									Serviços <i className="fas fa-chevron-down"></i>
-								</button>
-								<div
-									className={`dropdown-menu ${
-										servicesDropdownOpen ? "open" : ""
-									}`}
-									onMouseEnter={() => setServicesDropdownOpen(true)}
-									onMouseLeave={() => setServicesDropdownOpen(false)}
-								>
-									<Link to="/services/ai-customer-service" onClick={closeMenu}>
-										Agentes de IA para Atendimento
-									</Link>
-									<Link to="/services/sales-automation" onClick={closeMenu}>
-										Automação de Vendas
-									</Link>
-									<Link to="/services/process-automation" onClick={closeMenu}>
-										Automação de Processos
-									</Link>
-									<Link to="/services/clickup-automation" onClick={closeMenu}>
-										Automação com ClickUp
-									</Link>
-								</div>
-							</div>
-
 							<Link to="/ai-chat">Assistente IA</Link>
 						</div>
 					</div>
@@ -148,40 +109,6 @@ const Navbar = () => {
 						<Link to="/about" onClick={closeMenu}>
 							Sobre Nós
 						</Link>
-
-						{/* Serviços no menu mobile */}
-						<div className="mobile-dropdown">
-							<button
-								className="mobile-dropdown-trigger"
-								onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
-							>
-								Serviços{" "}
-								<i
-									className={`fas fa-chevron-${
-										servicesDropdownOpen ? "up" : "down"
-									}`}
-								></i>
-							</button>
-							<div
-								className={`mobile-dropdown-content ${
-									servicesDropdownOpen ? "open" : ""
-								}`}
-							>
-								<Link to="/services/ai-customer-service" onClick={closeMenu}>
-									Agentes de IA para Atendimento
-								</Link>
-								<Link to="/services/sales-automation" onClick={closeMenu}>
-									Automação de Vendas
-								</Link>
-								<Link to="/services/process-automation" onClick={closeMenu}>
-									Automação de Processos
-								</Link>
-								<Link to="/services/clickup-automation" onClick={closeMenu}>
-									Automação com ClickUp
-								</Link>
-							</div>
-						</div>
-
 						<Link to="/ai-chat" onClick={closeMenu}>
 							Assistente IA
 						</Link>
