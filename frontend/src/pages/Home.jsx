@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import ContactSection from "../components/ContactSection";
 import "../styles/Home.css";
@@ -8,6 +8,8 @@ const Home = () => {
 	const [visibleCards, setVisibleCards] = useState([]);
 	const [activeStep, setActiveStep] = useState(null);
 	const [isWorkflowInView, setIsWorkflowInView] = useState(false);
+
+	const servicesRef = useRef(null);
 
 	// Efeito para detectar scroll e animar elementos quando entram na viewport
 	useEffect(() => {
@@ -303,12 +305,8 @@ const Home = () => {
 			</section>
 
 			{/* Serviços Section - Modernizada */}
+			{/* Serviços Section - Versão modernizada com ícones elevados */}
 			<section className="modern-services-section">
-				<div className="background-elements">
-					<div className="bg-gradient-circle"></div>
-					<div className="bg-pattern"></div>
-				</div>
-
 				<div className="container">
 					<div className="section-header">
 						<h2 className="section-title">Nossos Serviços</h2>
@@ -320,41 +318,109 @@ const Home = () => {
 					</div>
 
 					<div className="services-grid">
-						{services.map((service, index) => (
-							<div
-								key={service.id}
-								id={service.id}
-								className={`service-card ${
-									visibleCards.includes(service.id) ? "visible" : ""
-								}`}
-								style={{ animationDelay: `${index * 0.1}s` }}
-							>
-								<div className="card-inner">
-									<div className="card-front">
-										<div className="service-icon">
-											<i className={`fas ${service.icon}`}></i>
-											<div className="icon-bg"></div>
-										</div>
-										<h3 className="service-title">{service.title}</h3>
-										<p className="service-description">{service.description}</p>
-									</div>
-									<div className="card-action">
-										<Link to={service.url} className="service-link">
-											<span>Saiba mais</span>
-											<i className="fas fa-arrow-right"></i>
-										</Link>
-									</div>
+						{/* Card 1 - Agentes de IA */}
+						<div className="service-card">
+							<div className="service-icon-wrapper">
+								<div className="service-icon">
+									<i className="fas fa-robot"></i>
 								</div>
-								<div className="card-shine"></div>
 							</div>
-						))}
-					</div>
+							<div className="service-content">
+								<h3 className="service-title">
+									Agentes de IA para Atendimento
+								</h3>
+								<p className="service-description">
+									Automatize o atendimento ao cliente com agentes de IA que
+									respondem perguntas frequentes, resolvem problemas comuns e
+									escalonam para humanos quando necessário.
+								</p>
+								<div className="service-link-wrapper">
+									<Link
+										to="/services/ai-customer-service"
+										className="service-link"
+									>
+										Saiba mais <i className="fas fa-arrow-right"></i>
+									</Link>
+								</div>
+							</div>
+						</div>
 
-					<div className="service-cta">
-						<Link to="/about" className="services-button">
-							Ver todos os serviços
-							<i className="fas fa-long-arrow-alt-right"></i>
-						</Link>
+						{/* Card 2 - Automação de Vendas */}
+						<div className="service-card">
+							<div className="service-icon-wrapper">
+								<div className="service-icon">
+									<i className="fas fa-chart-line"></i>
+								</div>
+							</div>
+							<div className="service-content">
+								<h3 className="service-title">Automação de Vendas</h3>
+								<p className="service-description">
+									Aumente a eficiência da sua equipe de vendas com ferramentas
+									de IA que qualificam leads, personalizam comunicações e
+									preveem o comportamento do cliente.
+								</p>
+								<div className="service-link-wrapper">
+									<Link
+										to="/services/sales-automation"
+										className="service-link"
+									>
+										Saiba mais <i className="fas fa-arrow-right"></i>
+									</Link>
+								</div>
+							</div>
+						</div>
+
+						{/* Card 3 - Automação de Processos */}
+						<div className="service-card">
+							<div className="service-icon-wrapper">
+								<div className="service-icon">
+									<i className="fas fa-cogs"></i>
+								</div>
+							</div>
+							<div className="service-content">
+								<h3 className="service-title">Automação de Processos</h3>
+								<p className="service-description">
+									Elimine tarefas repetitivas e reduza erros humanos com
+									sistemas inteligentes que automatizam fluxos de trabalho em
+									toda a organização.
+								</p>
+								<div className="service-link-wrapper">
+									<Link
+										to="/services/process-automation"
+										className="service-link"
+									>
+										Saiba mais <i className="fas fa-arrow-right"></i>
+									</Link>
+								</div>
+							</div>
+						</div>
+
+						{/* Card 4 - Automação com ClickUp */}
+						<div className="service-card">
+							<div className="service-icon-wrapper">
+								<div className="service-icon">
+									<i className="fas fa-tasks"></i>
+								</div>
+							</div>
+							<div className="service-content">
+								<h3 className="service-title">
+									Automação de Processos Internos (com ClickUp)
+								</h3>
+								<p className="service-description">
+									Potencialize seu ClickUp com automações personalizadas que
+									integram IA para otimizar seus fluxos de trabalho, aumentar a
+									produtividade e reduzir erros.
+								</p>
+								<div className="service-link-wrapper">
+									<Link
+										to="/services/clickup-automation"
+										className="service-link"
+									>
+										Saiba mais <i className="fas fa-arrow-right"></i>
+									</Link>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
 			</section>
