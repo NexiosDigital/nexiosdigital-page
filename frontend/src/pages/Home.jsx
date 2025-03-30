@@ -169,7 +169,7 @@ const Home = () => {
 		<div className="home-page">
 			{/* Hero Section Modernizada */}
 			<section className="modern-hero">
-				{/* Elementos de background com efeito parallax */}
+				{/* Elementos de background */}
 				<div className="hero-bg-elements">
 					<div
 						className="hero-particle hero-particle-1"
@@ -194,7 +194,7 @@ const Home = () => {
 					></div>
 				</div>
 
-				<div className="container">
+				<div className="container hero-container">
 					<div className="hero-content">
 						<div className="hero-text">
 							<h1 className="hero-title animate-on-scroll">
@@ -276,31 +276,8 @@ const Home = () => {
 						</div>
 					</div>
 
-					<div className="hero-stats animate-on-scroll">
-						<div className="stat-item">
-							<div className="stat-value">
-								98<span className="percent">%</span>
-							</div>
-							<div className="stat-label">Satisfação de clientes</div>
-						</div>
-						<div className="stat-item">
-							<div className="stat-value">
-								65<span className="percent">%</span>
-							</div>
-							<div className="stat-label">Redução de custos</div>
-						</div>
-						<div className="stat-item">
-							<div className="stat-value">
-								4.5<span className="multiply">×</span>
-							</div>
-							<div className="stat-label">Aumento de eficiência</div>
-						</div>
-					</div>
-
-					<div className="hero-scroll-indicator">
-						<span>Role para explorar</span>
-						<i className="fas fa-chevron-down"></i>
-					</div>
+					{/* Removi o hero-stats que costuma ocupar muito espaço */}
+					{/* Removi também o hero-scroll-indicator */}
 				</div>
 			</section>
 
