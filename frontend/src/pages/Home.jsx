@@ -305,120 +305,84 @@ const Home = () => {
 			</section>
 
 			{/* Serviços Section - Modernizada */}
-			{/* Serviços Section - Versão modernizada com ícones elevados */}
-			<section className="modern-services-section">
+
+			<section className="section services-section">
 				<div className="container">
-					<div className="section-header">
-						<h2 className="section-title">Nossos Serviços</h2>
-						<div className="title-underline"></div>
-						<p className="section-subtitle">
-							Combinamos tecnologia de ponta com expertise em negócios para
-							criar soluções que transformam empresas.
-						</p>
-					</div>
+					<h2 className="section-title">Nossos Serviços</h2>
+					<p className="section-subtitle">
+						Combinamos tecnologia de ponta com expertise em negócios para criar
+						soluções que transformam empresas.
+					</p>
 
 					<div className="services-grid">
-						{/* Card 1 - Agentes de IA */}
-						<div className="service-card">
-							<div className="service-icon-wrapper">
-								<div className="service-icon">
-									<i className="fas fa-robot"></i>
-								</div>
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-robot"></i>
 							</div>
-							<div className="service-content">
-								<h3 className="service-title">
-									Agentes de IA para Atendimento
-								</h3>
-								<p className="service-description">
+							<div className="card-content">
+								<h3 className="card-title">Agentes de IA para Atendimento</h3>
+								<p>
 									Automatize o atendimento ao cliente com agentes de IA que
 									respondem perguntas frequentes, resolvem problemas comuns e
 									escalonam para humanos quando necessário.
 								</p>
-								<div className="service-link-wrapper">
-									<Link
-										to="/services/ai-customer-service"
-										className="service-link"
-									>
-										Saiba mais <i className="fas fa-arrow-right"></i>
-									</Link>
-								</div>
+								<Link to="/services/ai-customer-service" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
 							</div>
 						</div>
 
-						{/* Card 2 - Automação de Vendas */}
-						<div className="service-card">
-							<div className="service-icon-wrapper">
-								<div className="service-icon">
-									<i className="fas fa-chart-line"></i>
-								</div>
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-chart-line"></i>
 							</div>
-							<div className="service-content">
-								<h3 className="service-title">Automação de Vendas</h3>
-								<p className="service-description">
+							<div className="card-content">
+								<h3 className="card-title">Automação de Vendas</h3>
+								<p>
 									Aumente a eficiência da sua equipe de vendas com ferramentas
 									de IA que qualificam leads, personalizam comunicações e
 									preveem o comportamento do cliente.
 								</p>
-								<div className="service-link-wrapper">
-									<Link
-										to="/services/sales-automation"
-										className="service-link"
-									>
-										Saiba mais <i className="fas fa-arrow-right"></i>
-									</Link>
-								</div>
+								<Link to="/services/sales-automation" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
 							</div>
 						</div>
 
-						{/* Card 3 - Automação de Processos */}
-						<div className="service-card">
-							<div className="service-icon-wrapper">
-								<div className="service-icon">
-									<i className="fas fa-cogs"></i>
-								</div>
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-cogs"></i>
 							</div>
-							<div className="service-content">
-								<h3 className="service-title">Automação de Processos</h3>
-								<p className="service-description">
+							<div className="card-content">
+								<h3 className="card-title">Automação de Processos</h3>
+								<p>
 									Elimine tarefas repetitivas e reduza erros humanos com
 									sistemas inteligentes que automatizam fluxos de trabalho em
 									toda a organização.
 								</p>
-								<div className="service-link-wrapper">
-									<Link
-										to="/services/process-automation"
-										className="service-link"
-									>
-										Saiba mais <i className="fas fa-arrow-right"></i>
-									</Link>
-								</div>
+								<Link to="/services/process-automation" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
 							</div>
 						</div>
 
-						{/* Card 4 - Automação com ClickUp */}
-						<div className="service-card">
-							<div className="service-icon-wrapper">
-								<div className="service-icon">
-									<i className="fas fa-tasks"></i>
-								</div>
+						{/* Novo serviço de Automação com ClickUp */}
+						<div className="service-card card">
+							<div className="card-icon">
+								<i className="fas fa-tasks"></i>
 							</div>
-							<div className="service-content">
-								<h3 className="service-title">
+							<div className="card-content">
+								<h3 className="card-title">
 									Automação de Processos Internos (com ClickUp)
 								</h3>
-								<p className="service-description">
+								<p>
 									Potencialize seu ClickUp com automações personalizadas que
 									integram IA para otimizar seus fluxos de trabalho, aumentar a
 									produtividade e reduzir erros.
 								</p>
-								<div className="service-link-wrapper">
-									<Link
-										to="/services/clickup-automation"
-										className="service-link"
-									>
-										Saiba mais <i className="fas fa-arrow-right"></i>
-									</Link>
-								</div>
+								<Link to="/services/clickup-automation" className="card-link">
+									Saiba mais <i className="fas fa-arrow-right"></i>
+								</Link>
 							</div>
 						</div>
 					</div>
