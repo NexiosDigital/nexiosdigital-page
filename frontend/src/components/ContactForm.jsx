@@ -100,15 +100,7 @@ const ContactFormWithRecaptcha = () => {
 	};
 
 	return (
-		<div className="contact-form-container">
-			<div className="form-header">
-				<h3>Envie-nos uma mensagem</h3>
-				<p>
-					Preencha o formulário abaixo e entraremos em contato o mais breve
-					possível.
-				</p>
-			</div>
-
+		<div className="contact-form-wrapper">
 			{formStatus.message && (
 				<div className={`form-message ${formStatus.type}`}>
 					{formStatus.type === "success" ? (
@@ -121,137 +113,107 @@ const ContactFormWithRecaptcha = () => {
 			)}
 
 			<form className="contact-form" onSubmit={handleSubmit(onSubmit)}>
-				<div
-					className={`form-group ${
-						errors.name ? "error" : touchedFields.name ? "valid" : ""
-					}`}
-				>
+				<div className="form-field">
 					<label htmlFor="name" className="form-label">
 						Nome *
 					</label>
-					<div className="input-wrapper">
-						<input
-							type="text"
-							id="name"
-							{...register("name")}
-							className="form-input"
-							placeholder="Seu nome completo"
-							disabled={isSubmitting}
-						/>
-						{touchedFields.name && !errors.name && (
-							<i className="fas fa-check input-icon valid"></i>
-						)}
-						{errors.name && (
-							<i className="fas fa-exclamation-circle input-icon error"></i>
-						)}
-					</div>
+					<input
+						type="text"
+						id="name"
+						{...register("name")}
+						className={`form-input ${
+							errors.name
+								? "input-error"
+								: touchedFields.name
+								? "input-valid"
+								: ""
+						}`}
+						placeholder="Seu nome completo"
+						disabled={isSubmitting}
+					/>
 					{errors.name && (
 						<p className="error-message">{errors.name.message}</p>
 					)}
 				</div>
 
-				<div
-					className={`form-group ${
-						errors.email ? "error" : touchedFields.email ? "valid" : ""
-					}`}
-				>
+				<div className="form-field">
 					<label htmlFor="email" className="form-label">
 						Email *
 					</label>
-					<div className="input-wrapper">
-						<input
-							type="email"
-							id="email"
-							{...register("email")}
-							className="form-input"
-							placeholder="seu.email@exemplo.com"
-							disabled={isSubmitting}
-						/>
-						{touchedFields.email && !errors.email && (
-							<i className="fas fa-check input-icon valid"></i>
-						)}
-						{errors.email && (
-							<i className="fas fa-exclamation-circle input-icon error"></i>
-						)}
-					</div>
+					<input
+						type="email"
+						id="email"
+						{...register("email")}
+						className={`form-input ${
+							errors.email
+								? "input-error"
+								: touchedFields.email
+								? "input-valid"
+								: ""
+						}`}
+						placeholder="seu.email@exemplo.com"
+						disabled={isSubmitting}
+					/>
 					{errors.email && (
 						<p className="error-message">{errors.email.message}</p>
 					)}
 				</div>
 
-				<div className="form-row">
-					<div
-						className={`form-group ${
-							errors.company ? "error" : touchedFields.company ? "valid" : ""
-						}`}
-					>
-						<label htmlFor="company" className="form-label">
-							Empresa
-						</label>
-						<input
-							type="text"
-							id="company"
-							{...register("company")}
-							className="form-input"
-							placeholder="Nome da sua empresa"
-							disabled={isSubmitting}
-						/>
-					</div>
-
-					<div
-						className={`form-group ${
-							errors.phone ? "error" : touchedFields.phone ? "valid" : ""
-						}`}
-					>
-						<label htmlFor="phone" className="form-label">
-							Telefone
-						</label>
-						<div className="input-wrapper">
-							<input
-								type="tel"
-								id="phone"
-								{...register("phone")}
-								className="form-input"
-								placeholder="(22) 98765-4321"
-								disabled={isSubmitting}
-							/>
-							{touchedFields.phone && !errors.phone && (
-								<i className="fas fa-check input-icon valid"></i>
-							)}
-							{errors.phone && (
-								<i className="fas fa-exclamation-circle input-icon error"></i>
-							)}
-						</div>
-						{errors.phone && (
-							<p className="error-message">{errors.phone.message}</p>
-						)}
-					</div>
+				<div className="form-field">
+					<label htmlFor="company" className="form-label">
+						Empresa
+					</label>
+					<input
+						type="text"
+						id="company"
+						{...register("company")}
+						className="form-input"
+						placeholder="Nome da sua empresa"
+						disabled={isSubmitting}
+					/>
 				</div>
 
-				<div
-					className={`form-group ${
-						errors.message ? "error" : touchedFields.message ? "valid" : ""
-					}`}
-				>
+				<div className="form-field">
+					<label htmlFor="phone" className="form-label">
+						Telefone
+					</label>
+					<input
+						type="tel"
+						id="phone"
+						{...register("phone")}
+						className={`form-input ${
+							errors.phone
+								? "input-error"
+								: touchedFields.phone
+								? "input-valid"
+								: ""
+						}`}
+						placeholder="(22) 98765-4321"
+						disabled={isSubmitting}
+					/>
+					{errors.phone && (
+						<p className="error-message">{errors.phone.message}</p>
+					)}
+				</div>
+
+				<div className="form-field">
 					<label htmlFor="message" className="form-label">
 						Mensagem *
 					</label>
-					<div className="textarea-wrapper">
-						<textarea
-							id="message"
-							{...register("message")}
-							className="form-input"
-							rows="5"
-							placeholder="Como podemos ajudar?"
-							disabled={isSubmitting}
-						></textarea>
-						{touchedFields.message && !errors.message && (
-							<i className="fas fa-check input-icon valid textarea-icon"></i>
-						)}
-						{errors.message && (
-							<i className="fas fa-exclamation-circle input-icon error textarea-icon"></i>
-						)}
-					</div>
+					<textarea
+						id="message"
+						{...register("message")}
+						className={`form-input form-textarea ${
+							errors.message
+								? "input-error"
+								: touchedFields.message
+								? "input-valid"
+								: ""
+						}`}
+						rows="4"
+						placeholder="Como podemos ajudar?"
+						disabled={isSubmitting}
+					></textarea>
 					{errors.message && (
 						<p className="error-message">{errors.message.message}</p>
 					)}
@@ -270,7 +232,7 @@ const ContactFormWithRecaptcha = () => {
 
 				<button
 					type="submit"
-					className="btn btn-primary full-width"
+					className="btn-send"
 					disabled={isSubmitting || (!isDirty && !isValid)}
 				>
 					{isSubmitting ? (

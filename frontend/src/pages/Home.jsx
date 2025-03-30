@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import ContactForm from "../components/ContactForm";
+import ContactSection from "../components/ContactSection";
 import "../styles/Home.css";
 
 const Home = () => {
@@ -657,78 +657,8 @@ const Home = () => {
 				</div>
 			</section>
 
-			{/* Seção de Contato */}
-			<section id="contact" className="section contact-section">
-				<div className="container">
-					<h2 className="section-title animate-on-scroll">Entre em Contato</h2>
-					<p className="section-subtitle animate-on-scroll">
-						Estamos prontos para ajudar a transformar seu negócio com nossas
-						soluções de IA
-					</p>
-
-					<div className="contact-container animate-on-scroll">
-						<div className="contact-info">
-							<div className="contact-card">
-								<div className="contact-card-header">
-									<div className="contact-icon">
-										<i className="fas fa-envelope"></i>
-									</div>
-									<h3>E-mail</h3>
-								</div>
-								<p>
-									Envie-nos uma mensagem para obter mais informações ou
-									solicitar uma demonstração.
-								</p>
-								<a
-									href="mailto:administracao@nexiosdigital.com"
-									className="contact-link"
-								>
-									administracao@nexiosdigital.com
-								</a>
-							</div>
-
-							<div className="contact-card">
-								<div className="contact-card-header">
-									<div className="contact-icon">
-										<i className="fab fa-whatsapp"></i>
-									</div>
-									<h3>WhatsApp</h3>
-								</div>
-								<p>
-									Entre em contato diretamente com nossa equipe para um
-									atendimento mais rápido.
-								</p>
-								<a
-									href="https://wa.me/5522974033384"
-									className="contact-link"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									(22) 97403-3384
-								</a>
-							</div>
-
-							<div className="contact-card">
-								<div className="contact-card-header">
-									<div className="contact-icon">
-										<i className="fas fa-map-marker-alt"></i>
-									</div>
-									<h3>Localização</h3>
-								</div>
-								<p>Estamos localizados em:</p>
-								<address className="contact-address">
-									Campos dos Goytacazes
-									<br />
-									Rio de Janeiro - Brasil
-								</address>
-							</div>
-						</div>
-
-						{/* Formulário de contato */}
-						<ContactForm />
-					</div>
-				</div>
-			</section>
+			{/* Seção de Contato - SUBSTITUÍDA PELO NOVO COMPONENTE */}
+			<ContactSection />
 		</div>
 	);
 };

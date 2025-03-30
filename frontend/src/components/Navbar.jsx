@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "../styles/Navbar.css";
 
 const Navbar = () => {
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [scrolled, setScrolled] = useState(false);
 	const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
+	const location = useLocation();
 
 	// Função para alternar o estado do menu mobile
 	const toggleMenu = () => {
@@ -20,7 +21,7 @@ const Navbar = () => {
 		document.body.style.overflow = "auto";
 	};
 
-	// Detectar scroll para adicionar sombra na navbar
+	// Detectar scroll para adicionar efeitos na navbar
 	useEffect(() => {
 		const handleScroll = () => {
 			if (window.scrollY > 20) {
@@ -57,11 +58,24 @@ const Navbar = () => {
 		setServicesDropdownOpen(!servicesDropdownOpen);
 	};
 
+	// Verificar se um link está ativo
+	const isActive = (path) => {
+		if (path === "/") {
+			return location.pathname === path;
+		}
+		return location.pathname.startsWith(path);
+	};
+
+	// Verificar se algum serviço está ativo
+	const isServicesActive = () => {
+		return location.pathname.includes("/services/");
+	};
+
 	return (
 		<>
 			<nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
 				<div className="container navbar-container">
-					{/* Logo */}
+					{/* Logo com efeito de hover melhorado */}
 					<Link to="/" className="logo" onClick={closeMenu}>
 						<span className="logo-text">Nexios Digital</span>
 					</Link>
@@ -69,18 +83,43 @@ const Navbar = () => {
 					{/* Navegação desktop centralizada */}
 					<div className="navbar-center">
 						<div className="navbar-links desktop-links">
-							<Link to="/">Home</Link>
-							<Link to="/about">Sobre Nós</Link>
+							<Link
+								to="/"
+								className={isActive("/") ? "active" : ""}
+								onClick={closeMenu}
+							>
+								Home
+								{isActive("/") && <span className="nav-indicator"></span>}
+							</Link>
 
-							{/* Dropdown de serviços */}
+							<Link
+								to="/about"
+								className={isActive("/about") ? "active" : ""}
+								onClick={closeMenu}
+							>
+								Sobre Nós
+								{isActive("/about") && <span className="nav-indicator"></span>}
+							</Link>
+
+							{/* Dropdown de serviços com indicador de ativo */}
 							<div className="dropdown-container">
 								<button
-									className="dropdown-trigger"
+									className={`dropdown-trigger ${
+										isServicesActive() ? "active" : ""
+									}`}
 									onMouseEnter={() => setServicesDropdownOpen(true)}
 									onMouseLeave={() => setServicesDropdownOpen(false)}
 									onClick={toggleServicesDropdown}
 								>
-									Serviços <i className="fas fa-chevron-down"></i>
+									Serviços
+									<i
+										className={`fas fa-chevron-${
+											servicesDropdownOpen ? "up" : "down"
+										}`}
+									></i>
+									{isServicesActive() && (
+										<span className="nav-indicator"></span>
+									)}
 								</button>
 								<div
 									className={`dropdown-menu ${
@@ -89,22 +128,55 @@ const Navbar = () => {
 									onMouseEnter={() => setServicesDropdownOpen(true)}
 									onMouseLeave={() => setServicesDropdownOpen(false)}
 								>
-									<Link to="/services/ai-customer-service" onClick={closeMenu}>
+									<Link
+										to="/services/ai-customer-service"
+										className={
+											isActive("/services/ai-customer-service") ? "active" : ""
+										}
+										onClick={closeMenu}
+									>
 										Agentes de IA para Atendimento
 									</Link>
-									<Link to="/services/sales-automation" onClick={closeMenu}>
+									<Link
+										to="/services/sales-automation"
+										className={
+											isActive("/services/sales-automation") ? "active" : ""
+										}
+										onClick={closeMenu}
+									>
 										Automação de Vendas
 									</Link>
-									<Link to="/services/process-automation" onClick={closeMenu}>
+									<Link
+										to="/services/process-automation"
+										className={
+											isActive("/services/process-automation") ? "active" : ""
+										}
+										onClick={closeMenu}
+									>
 										Automação de Processos
 									</Link>
-									<Link to="/services/clickup-automation" onClick={closeMenu}>
+									<Link
+										to="/services/clickup-automation"
+										className={
+											isActive("/services/clickup-automation") ? "active" : ""
+										}
+										onClick={closeMenu}
+									>
 										Automação com ClickUp
 									</Link>
 								</div>
 							</div>
 
-							<Link to="/ai-chat">Assistente IA</Link>
+							<Link
+								to="/ai-chat"
+								className={isActive("/ai-chat") ? "active" : ""}
+								onClick={closeMenu}
+							>
+								Assistente IA
+								{isActive("/ai-chat") && (
+									<span className="nav-indicator"></span>
+								)}
+							</Link>
 						</div>
 					</div>
 
@@ -112,6 +184,7 @@ const Navbar = () => {
 					<div className="contact-button">
 						<a href="#contact" className="btn btn-primary">
 							<i className="fas fa-envelope"></i> Contato
+							<span className="btn-glow"></span>
 						</a>
 					</div>
 
@@ -120,6 +193,7 @@ const Navbar = () => {
 						className={`menu-toggle ${menuOpen ? "active" : ""}`}
 						onClick={toggleMenu}
 						aria-label="Menu principal"
+						aria-expanded={menuOpen}
 					>
 						<span></span>
 						<span></span>
@@ -128,8 +202,9 @@ const Navbar = () => {
 				</div>
 			</nav>
 
-			{/* Menu mobile fullscreen com blur */}
+			{/* Menu mobile fullscreen com blur e animações melhoradas */}
 			<div className={`fullscreen-menu ${menuOpen ? "active" : ""}`}>
+				<div className="menu-backdrop"></div>
 				<div className="menu-content">
 					{/* Botão X para fechar menu posicionado no canto direito */}
 					<button
@@ -142,17 +217,31 @@ const Navbar = () => {
 					</button>
 
 					<div className="mobile-links">
-						<Link to="/" onClick={closeMenu}>
+						<Link
+							to="/"
+							className={isActive("/") ? "active" : ""}
+							onClick={closeMenu}
+						>
 							Home
+							{isActive("/") && <span className="mobile-nav-indicator"></span>}
 						</Link>
-						<Link to="/about" onClick={closeMenu}>
+						<Link
+							to="/about"
+							className={isActive("/about") ? "active" : ""}
+							onClick={closeMenu}
+						>
 							Sobre Nós
+							{isActive("/about") && (
+								<span className="mobile-nav-indicator"></span>
+							)}
 						</Link>
 
-						{/* Serviços no menu mobile */}
+						{/* Serviços no menu mobile com indicador de ativo */}
 						<div className="mobile-dropdown">
 							<button
-								className="mobile-dropdown-trigger"
+								className={`mobile-dropdown-trigger ${
+									isServicesActive() ? "active" : ""
+								}`}
 								onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
 							>
 								Serviços{" "}
@@ -161,29 +250,63 @@ const Navbar = () => {
 										servicesDropdownOpen ? "up" : "down"
 									}`}
 								></i>
+								{isServicesActive() && (
+									<span className="mobile-nav-indicator"></span>
+								)}
 							</button>
 							<div
 								className={`mobile-dropdown-content ${
 									servicesDropdownOpen ? "open" : ""
 								}`}
 							>
-								<Link to="/services/ai-customer-service" onClick={closeMenu}>
+								<Link
+									to="/services/ai-customer-service"
+									className={
+										isActive("/services/ai-customer-service") ? "active" : ""
+									}
+									onClick={closeMenu}
+								>
 									Agentes de IA para Atendimento
 								</Link>
-								<Link to="/services/sales-automation" onClick={closeMenu}>
+								<Link
+									to="/services/sales-automation"
+									className={
+										isActive("/services/sales-automation") ? "active" : ""
+									}
+									onClick={closeMenu}
+								>
 									Automação de Vendas
 								</Link>
-								<Link to="/services/process-automation" onClick={closeMenu}>
+								<Link
+									to="/services/process-automation"
+									className={
+										isActive("/services/process-automation") ? "active" : ""
+									}
+									onClick={closeMenu}
+								>
 									Automação de Processos
 								</Link>
-								<Link to="/services/clickup-automation" onClick={closeMenu}>
+								<Link
+									to="/services/clickup-automation"
+									className={
+										isActive("/services/clickup-automation") ? "active" : ""
+									}
+									onClick={closeMenu}
+								>
 									Automação com ClickUp
 								</Link>
 							</div>
 						</div>
 
-						<Link to="/ai-chat" onClick={closeMenu}>
+						<Link
+							to="/ai-chat"
+							className={isActive("/ai-chat") ? "active" : ""}
+							onClick={closeMenu}
+						>
 							Assistente IA
+							{isActive("/ai-chat") && (
+								<span className="mobile-nav-indicator"></span>
+							)}
 						</Link>
 					</div>
 					<div className="mobile-actions">
@@ -193,6 +316,7 @@ const Navbar = () => {
 							onClick={closeMenu}
 						>
 							<i className="fas fa-envelope"></i> Contato
+							<span className="btn-glow"></span>
 						</a>
 					</div>
 				</div>
