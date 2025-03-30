@@ -35,6 +35,11 @@
   transform: scale(1.02);
 }
 
+.logo img {
+  height: 42px;
+  margin-right: 12px;
+}
+
 .logo-text {
   font-family: var(--font-heading);
   font-size: 1.8rem;
@@ -69,6 +74,7 @@
 .navbar-links {
   display: flex;
   gap: 2.5rem;
+  align-items: center; /* Garante alinhamento vertical consistente */
 }
 
 .navbar-links a {
@@ -78,7 +84,8 @@
   transition: var(--transition-normal);
   position: relative;
   padding: 0.5rem 0;
-  white-space: nowrap;
+  display: flex; /* Adicionado para alinhar melhor com o dropdown */
+  align-items: center;
 }
 
 .navbar-links a:hover {
@@ -98,6 +105,112 @@
 
 .navbar-links a:hover::after {
   width: 100%;
+}
+
+/* Dropdown Menu */
+.dropdown-container {
+  position: relative;
+  display: inline-flex; /* Alterado para inline-flex para melhor alinhamento */
+  align-items: center; /* Centraliza o conteúdo verticalmente */
+  height: 100%; /* Garante mesma altura dos outros itens */
+}
+
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: var(--transition-normal);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+  position: relative;
+  font-family: var(--font-main); /* Mesma fonte dos outros links */
+}
+
+.dropdown-trigger:hover {
+  color: var(--primary);
+}
+
+.dropdown-trigger::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background: var(--gradient-accent);
+  transition: width var(--transition-normal);
+}
+
+.dropdown-trigger:hover::after {
+  width: 100%;
+}
+
+.dropdown-trigger i {
+  font-size: 0.7rem;
+  line-height: 1; /* Corrige linha-base */
+  position: relative;
+  top: 0; /* Ajusta posição vertical do ícone */
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  min-width: 250px;
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.8rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 20;
+}
+
+.dropdown-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.dropdown-menu::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 10px solid var(--card-bg);
+  z-index: 2;
+}
+
+.dropdown-menu a {
+  padding: 0.7rem 1.5rem;
+  text-align: left;
+  white-space: normal;
+  width: 100%;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-menu a:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dropdown-menu a::after {
+  display: none;
 }
 
 /* Botão de contato */
@@ -287,6 +400,66 @@
   width: 50%;
 }
 
+/* Mobile dropdown */
+.mobile-dropdown {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.mobile-dropdown-trigger {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.3s ease, color 0.3s ease;
+  text-align: center;
+  width: 100%;
+  justify-content: center;
+  font-family: var(--font-main);
+}
+
+.mobile-dropdown-trigger:hover {
+  transform: translateY(-5px);
+  color: var(--accent);
+}
+
+.mobile-dropdown-trigger i {
+  font-size: 1.2rem;
+  margin-left: 0.5rem;
+  position: relative;
+  top: 0;
+  line-height: 1;
+}
+
+.mobile-dropdown-content {
+  height: 0;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: height 0.3s ease;
+}
+
+.mobile-dropdown-content.open {
+  height: auto;
+  margin-top: 1rem;
+}
+
+.mobile-dropdown-content a {
+  font-size: 1.5rem;
+  margin: 0.5rem 0;
+}
+
 .mobile-actions {
   margin-top: 1rem;
 }
@@ -301,27 +474,32 @@
   .menu-toggle {
     display: block;
   }
-  
+
   .navbar-container {
     padding: 0 20px;
   }
-  
+
   .navbar-center {
     display: none;
   }
-  
+
   /* Ocultar botão de contato na navbar em mobile */
   .contact-button {
     display: none;
   }
-  
+
   /* Quando o menu está ativo, mudar a cor do botão toggle */
   .menu-toggle.active span {
     background-color: var(--accent);
   }
-  
+
   /* Mostrar botão de fechamento no menu */
   .menu-close-btn {
     display: block;
+  }
+
+  .dropdown-container {
+    width: 100%;
+    text-align: center;
   }
 }

@@ -1,10 +1,18 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import "../../styles/ServicePage.css";
 
 const AICustomerService = () => {
+	const [scrollPosition, setScrollPosition] = useState(0);
+
 	// Efeito de animação aos elementos quando a página carrega
 	useEffect(() => {
+		const handleScroll = () => {
+			setScrollPosition(window.scrollY);
+		};
+
+		window.addEventListener("scroll", handleScroll);
+
 		const animatedElements = document.querySelectorAll(".animate-on-scroll");
 
 		const observer = new IntersectionObserver(
@@ -22,9 +30,18 @@ const AICustomerService = () => {
 		animatedElements.forEach((el) => observer.observe(el));
 
 		return () => {
+			window.removeEventListener("scroll", handleScroll);
 			animatedElements.forEach((el) => observer.unobserve(el));
 		};
 	}, []);
+
+	// Método para calcular estilo parallax baseado no scroll
+	const calculateParallaxStyle = (factor) => {
+		return {
+			transform: `translateY(${scrollPosition * factor}px)`,
+			transition: "transform 0.1s ease-out",
+		};
+	};
 
 	return (
 		<div className="service-page">

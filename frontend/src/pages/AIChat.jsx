@@ -668,18 +668,22 @@ const AIChat = () => {
 		setupWebSocket();
 	};
 
-	// Renderização do chat
+	// Renderização do chat - MELHORIAS APENAS VISUAIS AQUI
 	return (
-		<div className="ai-chat-page">
+		<div className="ai-chat-page modern-chat-page">
 			<div className="container">
-				<div className="chat-header">
-					<h1>Assistente Nexios Digital</h1>
-					<p>
-						Interaja com nossa IA e descubra como podemos ajudar a transformar
-						seu negócio.
-					</p>
+				<div className="chat-header modern-header">
+					<div className="header-content">
+						<h1>
+							Assistente <span className="text-gradient">Nexios</span> Digital
+						</h1>
+						<p>
+							Interaja com nossa IA e descubra como podemos ajudar a transformar
+							seu negócio.
+						</p>
+					</div>
 
-					{/* Área de status */}
+					{/* Status indicators */}
 					<div className="status-container">
 						<div className={`websocket-status ${connectionStatus}`}>
 							<i className="fas fa-circle"></i>
@@ -730,7 +734,7 @@ const AIChat = () => {
 					</div>
 				)}
 
-				<div className="chat-container">
+				<div className="chat-container modern-chat-container">
 					<div className="chat-messages" ref={chatMessagesRef}>
 						{messages.map((message, index) => (
 							<div
@@ -739,29 +743,48 @@ const AIChat = () => {
 									message.isTemporary ? "temporary" : ""
 								}`}
 							>
-								{message.content}
-								{message.isTemporary && (
-									<div className="message-loader">
-										<span></span>
-										<span></span>
-										<span></span>
+								{message.role === "assistant" && (
+									<div className="message-avatar">
+										<i className="fas fa-robot"></i>
+									</div>
+								)}
+								<div className="message-bubble">
+									<div className="message-content">{message.content}</div>
+									{message.isTemporary && (
+										<div className="message-loader">
+											<span></span>
+											<span></span>
+											<span></span>
+										</div>
+									)}
+								</div>
+								{message.role === "user" && (
+									<div className="message-avatar user-avatar">
+										<i className="fas fa-user"></i>
 									</div>
 								)}
 							</div>
 						))}
 
 						{isTyping && !messages.some((m) => m.isTemporary) && (
-							<div className="typing-indicator">
-								<span></span>
-								<span></span>
-								<span></span>
+							<div className="message message-assistant typing-message">
+								<div className="message-avatar">
+									<i className="fas fa-robot"></i>
+								</div>
+								<div className="message-bubble">
+									<div className="typing-indicator">
+										<span></span>
+										<span></span>
+										<span></span>
+									</div>
+								</div>
 							</div>
 						)}
 
 						<div ref={messagesEndRef}></div>
 					</div>
 
-					<div className="chat-input-container">
+					<div className="chat-input-container modern-input">
 						<textarea
 							ref={chatInputRef}
 							className="chat-input"
@@ -772,7 +795,7 @@ const AIChat = () => {
 							disabled={isTyping || connectionStatus === "error"}
 						/>
 						<button
-							className="chat-send-btn"
+							className={`chat-send-btn ${input.trim() ? "active" : ""}`}
 							onClick={handleSendMessage}
 							disabled={
 								isTyping || input.trim() === "" || connectionStatus === "error"
@@ -799,7 +822,11 @@ const AIChat = () => {
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							<i className="fas fa-paper-plane"></i> Falar com um Especialista
+							<span className="btn-content">
+								<i className="fas fa-paper-plane"></i>
+								<span>Falar com um Especialista</span>
+							</span>
+							<span className="btn-glow"></span>
 						</a>
 					</div>
 				</div>
