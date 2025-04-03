@@ -598,7 +598,7 @@ const AIChat = () => {
 					...prev,
 					{
 						role: "assistant",
-						content: response.response || "Processando sua mensagem...",
+						content: "",
 						isTemporary: true,
 						timestamp: new Date().toISOString(),
 					},
