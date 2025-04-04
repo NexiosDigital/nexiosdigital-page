@@ -9,7 +9,7 @@ const AIChat = () => {
 		{
 			role: "assistant",
 			content:
-				"Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje?",
+				"Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje? Estou aqui para responder perguntas sobre nossos serviços de automação e inteligência artificial.",
 		},
 	]);
 	const [input, setInput] = useState("");
@@ -51,7 +51,7 @@ const AIChat = () => {
 		}
 	}, [messages]);
 
-	// Função para verificar novas mensagens - MELHORADA
+	// Função para verificar novas mensagens - ORIGINAL
 	const checkNewMessages = useCallback(async () => {
 		if (!conversationId) return false;
 
@@ -155,7 +155,7 @@ const AIChat = () => {
 		}
 	}, [API_URL, conversationId, messages]);
 
-	// Função para iniciar polling após enviar mensagem - MELHORADA
+	// Função para iniciar polling após enviar mensagem - ORIGINAL
 	const startMessagePolling = useCallback(() => {
 		// Limpar polling anterior se existir
 		if (pollingIntervalRef.current) {
@@ -214,7 +214,7 @@ const AIChat = () => {
 		});
 	}, [checkNewMessages]);
 
-	// Iniciar WebSocket e gerenciar reconexão
+	// Iniciar WebSocket e gerenciar reconexão - ORIGINAL
 	const setupWebSocket = useCallback(() => {
 		// Limpar timeout de reconexão anterior, se existir
 		if (reconnectTimeoutRef.current) {
@@ -425,9 +425,9 @@ const AIChat = () => {
 
 		// Guardar referência ao socket
 		setSocket(newSocket);
-	}, [API_URL, clientId, conversationId, messages]);
+	}, [API_URL, clientId, conversationId, messages, pollingActive]);
 
-	// Configuração do WebSocket - MELHORADA
+	// Configuração do WebSocket - ORIGINAL
 	useEffect(() => {
 		// Estabelecer conexão WebSocket quando o componente montar
 		setupWebSocket();
@@ -508,7 +508,7 @@ const AIChat = () => {
 		checkApiStatus();
 	}, [API_URL]);
 
-	// Enviar mensagem para o backend
+	// Enviar mensagem para o backend - ORIGINAL
 	const sendMessage = async (messageText, msgConversationHistory) => {
 		try {
 			console.log(`Enviando mensagem para o backend...`);
@@ -545,7 +545,7 @@ const AIChat = () => {
 		}
 	};
 
-	// Manipulador para envio de mensagens
+	// Manipulador para envio de mensagens - ORIGINAL
 	const handleSendMessage = async () => {
 		if (input.trim() === "" || isTyping) return;
 
@@ -653,11 +653,24 @@ const AIChat = () => {
 		}
 	};
 
-	// Forçar verificação de mensagens pendentes
-	const handleCheckMessages = () => {
-		if (conversationId) {
-			checkNewMessages();
-		}
+	// Ajuste automático da altura do textarea
+	const handleInputChange = (e) => {
+		setInput(e.target.value);
+		e.target.style.height = "auto";
+		e.target.style.height =
+			e.target.scrollHeight < 150 ? `${e.target.scrollHeight}px` : "150px";
+	};
+
+	// Lidar com cliques nos atalhos
+	const handleShortcutClick = (shortcutText) => {
+		setInput(shortcutText);
+		chatInputRef.current.focus();
+		// Ajustar altura do textarea
+		chatInputRef.current.style.height = "auto";
+		chatInputRef.current.style.height =
+			chatInputRef.current.scrollHeight < 150
+				? `${chatInputRef.current.scrollHeight}px`
+				: "150px";
 	};
 
 	// Forçar reconexão do WebSocket
@@ -668,114 +681,113 @@ const AIChat = () => {
 		setupWebSocket();
 	};
 
-	// Renderização do chat - MELHORIAS APENAS VISUAIS AQUI
 	return (
-		<div className="ai-chat-page modern-chat-page">
-			<div className="container">
-				<div className="chat-header modern-header">
-					<div className="header-content">
-						<h1>
-							Assistente <span className="text-gradient">Nexios</span> Digital
-						</h1>
-						<p>
-							Interaja com nossa IA e descubra como podemos ajudar a transformar
-							seu negócio.
-						</p>
-
-						{/* Indicador de status simplificado */}
-						<div className="status-indicator">
-							<div className={`websocket-status ${connectionStatus}`}>
-								<i className="fas fa-circle"></i>
-								{connectionStatus === "connected"
-									? "Online"
-									: connectionStatus === "connecting"
-									? "Conectando..."
-									: "Offline"}
-							</div>
-						</div>
-
-						{/* Removidas as divs de polling-indicator e conversation-info */}
-
-						{connectionStatus !== "connected" && (
-							<button
-								className="btn btn-secondary btn-sm"
-								onClick={handleReconnect}
-							>
-								<i className="fas fa-plug"></i> Reconectar
-							</button>
-						)}
-					</div>
+		<div className="ai-chat-page modern-nexios-chat">
+			{/* Header */}
+			<header className="chat-header">
+				<div className="logo-text">Nexios Digital</div>
+				<div className="status-indicator">
+					<div className="status-dot"></div>
+					<span>Online</span>
 				</div>
+			</header>
 
-				{apiError && (
-					<div className="api-error-message">
-						<i className="fas fa-exclamation-triangle"></i>
-						<p>{apiError}</p>
-					</div>
-				)}
+			{/* Atalhos rápidos */}
+			<div className="shortcuts">
+				<button
+					className="shortcut-button"
+					onClick={() =>
+						handleShortcutClick("Como funciona a automação de processos?")
+					}
+				>
+					Automação de processos
+				</button>
+				<button
+					className="shortcut-button"
+					onClick={() =>
+						handleShortcutClick("Me fale sobre agentes de IA para atendimento")
+					}
+				>
+					Agentes de IA
+				</button>
+				<button
+					className="shortcut-button"
+					onClick={() =>
+						handleShortcutClick("Como funciona a automação com ClickUp?")
+					}
+				>
+					Automação com ClickUp
+				</button>
+				<button
+					className="shortcut-button"
+					onClick={() =>
+						handleShortcutClick("Gostaria de solicitar um orçamento")
+					}
+				>
+					Solicitar orçamento
+				</button>
+			</div>
 
-				<div className="chat-container modern-chat-container">
-					<div className="chat-messages" ref={chatMessagesRef}>
-						{messages.map((message, index) => (
-							<div
-								key={index}
-								className={`message message-${message.role} ${
-									message.isTemporary ? "temporary" : ""
-								}`}
-							>
-								{message.role === "assistant" && (
-									<div className="message-avatar">
-										<i className="fas fa-robot"></i>
-									</div>
-								)}
-								<div className="message-bubble">
-									<div className="message-content">{message.content}</div>
-									{message.isTemporary && (
-										<div className="message-loader">
-											<span></span>
-											<span></span>
-											<span></span>
-										</div>
-									)}
-								</div>
-								{message.role === "user" && (
-									<div className="message-avatar user-avatar">
-										<i className="fas fa-user"></i>
-									</div>
+			{/* Erro de API */}
+			{apiError && (
+				<div className="api-error-message">
+					<i className="fas fa-exclamation-triangle"></i>
+					<p>{apiError}</p>
+				</div>
+			)}
+
+			{connectionStatus !== "connected" && (
+				<div className="reconnect-container">
+					<button className="reconnect-button" onClick={handleReconnect}>
+						<i className="fas fa-sync-alt"></i> Reconectar
+					</button>
+				</div>
+			)}
+
+			{/* Container principal do chat */}
+			<div className="chat-container">
+				<div className="chat-messages" ref={chatMessagesRef}>
+					{messages.map((message, index) => (
+						<div key={index} className={`message ${message.role}`}>
+							<div className={`avatar ${message.role}`}>
+								{message.role === "assistant" ? (
+									<i className="fas fa-robot"></i>
+								) : (
+									<i className="fas fa-user"></i>
 								)}
 							</div>
-						))}
-
-						{isTyping && !messages.some((m) => m.isTemporary) && (
-							<div className="message message-assistant typing-message">
-								<div className="message-avatar">
-									<i className="fas fa-robot"></i>
-								</div>
-								<div className="message-bubble">
+							<div className="message-content">
+								{message.isTemporary ? (
 									<div className="typing-indicator">
 										<span></span>
 										<span></span>
 										<span></span>
 									</div>
-								</div>
+								) : (
+									message.content
+								)}
 							</div>
-						)}
+						</div>
+					))}
 
-						<div ref={messagesEndRef}></div>
-					</div>
+					<div ref={messagesEndRef}></div>
+				</div>
 
-					<div className="chat-input-container modern-input">
+				{/* Área de input */}
+				<div className="input-container">
+					<div className="input-box">
 						<textarea
 							ref={chatInputRef}
-							className="chat-input"
+							className="input-textarea"
 							value={input}
-							onChange={(e) => setInput(e.target.value)}
+							onChange={handleInputChange}
 							onKeyDown={handleKeyDown}
 							placeholder="Digite sua mensagem..."
 							disabled={isTyping || connectionStatus === "error"}
+							rows="1"
 						/>
 						<button
-							className={`chat-send-btn ${input.trim() ? "active" : ""}`}
+							className="send-button"
 							onClick={handleSendMessage}
 							disabled={
 								isTyping || input.trim() === "" || connectionStatus === "error"
@@ -785,30 +797,27 @@ const AIChat = () => {
 						</button>
 					</div>
 				</div>
+			</div>
 
-				<div className="chat-footer">
-					<p>
-						Este assistente virtual utiliza IA para fornecer informações sobre
-						nossos serviços. Para informações mais detalhadas ou personalizadas,
-						entre em contato com nossa equipe.
-					</p>
-					<div className="chat-actions">
-						<Link to="/" className="btn btn-secondary">
-							<i className="fas fa-home"></i> Voltar para Home
-						</Link>
-						<a
-							href="https://wa.me/5522974033384"
-							className="btn btn-primary"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<span className="btn-content">
-								<i className="fas fa-paper-plane"></i>
-								<span>Falar com um Especialista</span>
-							</span>
-							<span className="btn-glow"></span>
-						</a>
-					</div>
+			{/* Footer com links */}
+			<div className="chat-footer">
+				<p>
+					Este assistente virtual utiliza IA para fornecer informações sobre
+					nossos serviços. Para informações mais detalhadas ou personalizadas,
+					entre em contato com nossa equipe.
+				</p>
+				<div className="chat-actions">
+					<Link to="/" className="btn btn-secondary">
+						<i className="fas fa-home"></i> Voltar para Home
+					</Link>
+					<a
+						href="https://wa.me/5522974033384"
+						className="btn btn-primary"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<i className="fab fa-whatsapp"></i> Falar com um Especialista
+					</a>
 				</div>
 			</div>
 		</div>
