@@ -681,19 +681,17 @@ const AIChat = () => {
 							Interaja com nossa IA e descubra como podemos ajudar a transformar
 							seu negócio.
 						</p>
-					</div>
 
-					{/* Status indicators */}
-					<div className="status-container">
-						<div className={`websocket-status ${connectionStatus}`}>
-							<i className="fas fa-circle"></i>
-							{connectionStatus === "connected"
-								? "Conectado"
-								: connectionStatus === "connecting"
-								? "Conectando..."
-								: connectionStatus === "error"
-								? "Erro de Conexão"
-								: "Modo Offline"}
+						{/* Adicione aqui o indicador de status simplificado */}
+						<div className="status-indicator">
+							<div className={`websocket-status ${connectionStatus}`}>
+								<i className="fas fa-circle"></i>
+								{connectionStatus === "connected"
+									? "Online"
+									: connectionStatus === "connecting"
+									? "Conectando..."
+									: "Offline"}
+							</div>
 						</div>
 
 						{pollingActive && (

@@ -785,3 +785,25 @@
     align-self: flex-end;
   }
 }
+
+.status-indicator {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 10;
+}
+
+.websocket-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.websocket-status i {
+  margin-right: 0.6rem;
+  font-size: 0.8rem;
+}
