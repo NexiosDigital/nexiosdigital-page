@@ -32,10 +32,11 @@
   align-items: center;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
+  transform: scale(1.45);
 }
 
 .logo:hover {
-  transform: scale(1.03);
+  transform: scale(1.55);
 }
 
 .logo-text {

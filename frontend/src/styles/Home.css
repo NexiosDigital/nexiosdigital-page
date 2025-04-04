@@ -45,7 +45,7 @@
   width: 100%;
   height: 100%;
   background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+                  linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
   z-index: -1;
 }
@@ -424,51 +424,6 @@
   opacity: 0.5;
 }
 
-/* Ajustes responsivos */
-@media (max-width: 992px) {
-  .hero-visual {
-    max-width: 600px;
-    width: 100%;
-    margin: 0 auto;
-  }
-  
-  .chat-messages {
-    min-height: 250px;
-    max-height: 250px;
-  }
-}
-
-@media (max-width: 768px) {
-  .hero-visual {
-    max-width: 90%;
-  }
-  
-  .chat-interface {
-    transform: none;
-  }
-  
-  .chat-messages {
-    min-height: 220px;
-    max-height: 220px;
-  }
-}
-
-@media (max-width: 480px) {
-  .chat-input {
-    padding: 0.8rem;
-  }
-  
-  .chat-input input {
-    padding: 0.7rem;
-  }
-  
-  .send-button {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-  }
-}
-
 /* Estatísticas */
 .hero-stats {
   display: flex;
@@ -735,67 +690,6 @@
 
 .service-link:hover i {
   transform: translateX(5px);
-}
-
-/* Responsividade */
-@media (max-width: 1200px) {
-  .services-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 4rem 2rem;
-    max-width: 900px;
-  }
-  
-  .section-title {
-    font-size: 2.5rem;
-  }
-  
-  .container {
-    padding: 0 25px;
-  }
-}
-
-@media (max-width: 768px) {
-  .services-grid {
-    grid-template-columns: 1fr;
-    max-width: 450px;
-    gap: 60px;
-    padding: 0 15px;
-  }
-  
-  .service-card {
-    margin-top: 40px;
-    padding-top: 45px;
-    padding-bottom: 25px;
-  }
-  
-  .section-title {
-    font-size: 2.2rem;
-  }
-  
-  .section-subtitle {
-    font-size: 1rem;
-    padding: 0 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .services-grid {
-    max-width: 100%;
-    padding: 0 10px;
-  }
-  
-  .service-icon {
-    width: 70px;
-    height: 70px;
-  }
-  
-  .service-icon i {
-    font-size: 1.8rem;
-  }
-  
-  .service-title {
-    font-size: 1.3rem;
-  }
 }
 
 /* ========== WORKFLOW SECTION MODERNIZADA ========== */
@@ -1283,7 +1177,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Responsividade */
+/* ========== MEDIA QUERIES ========== */
 @media (max-width: 1200px) {
   .hero-content {
     gap: 3rem;
@@ -1383,14 +1277,13 @@
     padding: 2rem 0 5rem;
   }
 
-    .section-header {
+  .section-header {
     margin-bottom: 3rem;
   }
 
-    .hero-scroll-indicator {
+  .hero-scroll-indicator {
     display: none; /* Pode ser removido em telas menores para economizar espaço */
   }
-
   
   .hero-title, .section-title, .workflow-title {
     font-size: 2.2rem;
@@ -1486,6 +1379,101 @@
   .btn {
     width: 100%;
   }
+  
+  /* Estilo para a seção de workflow/como trabalhamos */
+  .workflow-section .container,
+  .how-it-works-section .container {
+    padding: 0 15px;
+  }
+
+  /* Centralizar etapas */
+  .workflow-step,
+  .step {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem 1rem;
+  }
+
+  /* Centralizar o número da etapa */
+  .step-number,
+  .workflow-step-number {
+    margin: 0 auto 1.5rem;
+    position: relative;
+    left: 0;
+    transform: none;
+  }
+
+  /* Centralizar o conteúdo da etapa */
+  .step-content,
+  .workflow-step-content {
+    width: 100%;
+    text-align: center;
+    padding: 0;
+  }
+
+  /* Centralizar títulos */
+  .step-title,
+  .workflow-step-title {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  /* Centralizar descrições */
+  .step-description,
+  .workflow-step-description {
+    text-align: center;
+    margin: 0 auto;
+    max-width: 90%;
+  }
+  
+  /* Ajustar o alinhamento dos círculos numerados */
+  .workflow-timeline .timeline-line {
+    display: none; /* Remover a linha vertical se existir */
+  }
+  
+  /* Gerar mais espaço entre etapas */
+  .workflow-steps .workflow-step,
+  .steps-container .step {
+    margin-bottom: 3rem;
+  }
+  
+  /* Para círculos numerados que estão posicionados com absolute */
+  .workflow-step .step-number,
+  .step .step-number {
+    position: static;
+    margin: 0 auto 1.5rem;
+  }
+  
+  /* Círculos das etapas de trabalho */
+  .workflow-step .step-number,
+  .step-number,
+  [class*="step"] [class*="number"],
+  .workflow-timeline .workflow-step-number,
+  .number-circle {
+    width: 60px !important;  /* Largura fixa */
+    height: 60px !important; /* Altura igual à largura para formar um círculo perfeito */
+    border-radius: 50% !important; /* Garantir formato circular */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    aspect-ratio: 1 / 1 !important; /* Forçar proporção 1:1 */
+    transform: none !important; /* Remover transformações que podem distorcer */
+    box-shadow: 0 10px 20px rgba(255, 62, 108, 0.3) !important; /* Sombra para realçar */
+  }
+  
+  /* Texto dentro dos círculos */
+  .workflow-step .step-number span,
+  .step-number span,
+  [class*="step"] [class*="number"] span,
+  .number-circle span {
+    text-align: center !important;
+    width: 100% !important;
+    font-weight: bold !important;
+    line-height: 1 !important; /* Evitar distorções na altura da linha */
+  }
 }
 
 @media (max-width: 480px) {
@@ -1543,5 +1531,10 @@
   .service-title {
     font-size: 1.3rem;
     margin-bottom: 1rem;
+  }
+  
+  .step-description,
+  .workflow-step-description {
+    max-width: 100%;
   }
 }
