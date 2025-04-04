@@ -152,6 +152,7 @@
     overflow: hidden;
     position: relative;
     min-height: 60vh; /* Aumentar a altura mínima */
+    max-height: 60vh;
 }
 
 /* Mensagens */
@@ -324,7 +325,7 @@
     background-color: var(--background-dark);
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     text-align: center;
-    margin-top: auto; /* Empurra para o final do container */
+    margin-top: 0.8rem; /* Empurra para o final do container */
 }
 
 .chat-footer p {

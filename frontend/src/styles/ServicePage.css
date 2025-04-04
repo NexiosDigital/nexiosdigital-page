@@ -553,6 +553,8 @@
   }
 }
 
+
+
 @media (max-width: 480px) {
   .service-hero h1 {
     font-size: 2.2rem;
@@ -581,5 +583,50 @@
   
   .stat-value {
     font-size: 2.8rem;
+  }
+}
+
+/* Centralização dos cards de recursos/features */
+.features-grid,
+.service-features .features-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin: 0 auto;
+  max-width: 500px;
+}
+
+.feature-card {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.feature-icon {
+  margin: 0 auto 1.5rem;
+}
+
+/* Para quando a tela for maior que 768px, podemos manter o layout em grid */
+@media (min-width: 768px) {
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    max-width: 1200px;
+  }
+  
+  /* Se quiser apenas 2 colunas em vez de ajuste automático */
+  .service-features .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Em telas muito pequenas, garantir que os cards fiquem bem alinhados */
+@media (max-width: 480px) {
+  .feature-card {
+    max-width: 100%;
+    padding: 1.5rem 1rem;
   }
 }

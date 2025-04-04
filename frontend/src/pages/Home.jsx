@@ -413,7 +413,7 @@ const Home = () => {
 									onMouseLeave={handleStepLeave}
 								>
 									<div className="step-connector"></div>
-									<div className="step-number">
+									<div className="step-number perfectly-round">
 										<span>{step.number}</span>
 										<div className="number-glow"></div>
 									</div>
