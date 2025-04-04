@@ -807,3 +807,18 @@
   margin-right: 0.6rem;
   font-size: 0.8rem;
 }
+
+/* Esconde o indicador de polling caso ele seja renderizado pelo React */
+.polling-indicator {
+  display: none !important;
+}
+
+/* Esconde a informação do ID de conversa caso seja renderizada */
+.conversation-info {
+  display: none !important;
+}
+
+/* Opcional: Ajuste para reposicionar o indicador de status para compensar o espaço */
+.status-indicator {
+  margin-bottom: 10px;
+}

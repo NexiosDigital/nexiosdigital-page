@@ -682,7 +682,7 @@ const AIChat = () => {
 							seu negócio.
 						</p>
 
-						{/* Adicione aqui o indicador de status simplificado */}
+						{/* Indicador de status simplificado */}
 						<div className="status-indicator">
 							<div className={`websocket-status ${connectionStatus}`}>
 								<i className="fas fa-circle"></i>
@@ -694,25 +694,7 @@ const AIChat = () => {
 							</div>
 						</div>
 
-						{pollingActive && (
-							<div className="polling-indicator">
-								<i className="fas fa-sync fa-spin"></i> Aguardando resposta... (
-								{pollingAttemptsRef.current})
-							</div>
-						)}
-
-						{conversationId && (
-							<div className="conversation-info">
-								ID: {conversationId.substring(0, 8)}...
-								<button
-									className="refresh-button"
-									onClick={handleCheckMessages}
-									title="Verificar mensagens pendentes"
-								>
-									<i className="fas fa-sync-alt"></i>
-								</button>
-							</div>
-						)}
+						{/* Removidas as divs de polling-indicator e conversation-info */}
 
 						{connectionStatus !== "connected" && (
 							<button
