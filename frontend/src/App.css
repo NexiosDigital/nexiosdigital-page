@@ -108,6 +108,7 @@ body {
   overflow-x: hidden;
   background-color: var(--background-darker);
   color: var(--text-primary);
+  font-size: 0.85rem;
 }
 
 /* Melhorias em scrollbars */
@@ -158,13 +159,13 @@ body {
 /* ========== COMPONENTES COMUNS ========== */
 /* Botões - Redesenhados */
 .btn {
-  padding: 0.8rem 1.6rem;
+  padding: 0.7rem 1.5rem;
   border-radius: var(--border-radius-md);
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-normal);
   border: none;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   letter-spacing: 0.5px;
   display: inline-flex;
   align-items: center;
@@ -232,7 +233,7 @@ body {
 /* Títulos e subtítulos - Melhorados */
 .section-title {
   font-family: var(--font-heading);
-  font-size: 3rem;
+  font-size: 2.5rem;
   position: relative;
   text-align: center;
   color: var(--primary);
@@ -255,7 +256,7 @@ body {
 .section-subtitle {
   text-align: center;
   color: var(--text-secondary);
-  font-size: 1.2rem;
+  font-size: 1rem;
   max-width: 700px;
   margin: 1.5rem auto 3.5rem;
   line-height: 1.7;
@@ -296,7 +297,7 @@ body {
 
 .logo-text {
   font-family: var(--font-heading);
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--primary);
@@ -326,6 +327,7 @@ body {
   transition: var(--transition-normal);
   position: relative;
   padding: 0.5rem 0;
+  font-size: 0.85rem;
 }
 
 .navbar-links a:hover, .dropdown-trigger:hover {
@@ -347,12 +349,25 @@ body {
   width: 100%;
 }
 
+/* Títulos secundários */
+.about-text h2, .service-content-text h2 {
+  font-size: 2.1rem; /* Reduzido de 2.4-2.5rem */
+}
+
 /* ========== HERO SECTION ========== */
 .hero {
   padding: 10rem 0 6rem;
   text-align: center;
   position: relative;
   overflow: hidden;
+}
+
+.hero-title, .modern-hero .hero-title {
+  font-size: 3.4rem; /* Reduzido de 4rem */
+}
+
+.hero-description, .modern-hero .hero-description {
+  font-size: 1.1rem; /* Reduzido de 1.3rem */
 }
 
 .hero::before {
@@ -452,6 +467,22 @@ body {
 }
 
 /* ========== SERVIÇOS ========== */
+.card-title, .service-title, .feature-card h3 {
+  font-size: 1.2rem; /* Reduzido de 1.4rem */
+}
+
+.step-title, .expertise-item h3 {
+  font-size: 1.35rem; /* Reduzido proporcionalmente */
+}
+
+.stat-value {
+  font-size: 3rem; /* Reduzido de 3.5rem */
+}
+
+.stat-label {
+  font-size: 1rem; /* Reduzido proporcionalmente */
+}
+
 .services-section {
   background: linear-gradient(to bottom, var(--background-dark), var(--background-darker));
   position: relative;
@@ -544,7 +575,7 @@ body {
 
 .card-content p {
   color: var(--text-secondary);
-  line-height: 1.7;
+  line-height: 1.6;
   margin-bottom: 1.5rem;
   text-align: center;
   font-size: 0.95rem;
@@ -586,6 +617,10 @@ body {
 .how-it-works-section {
   background-color: var(--background-darker);
   position: relative;
+}
+
+p, .card-content p, .feature-card p, .step-content p {
+  line-height: 1.6; /* Ajuste no espaçamento entre linhas para melhor legibilidade */
 }
 
 .steps-container {
@@ -631,7 +666,7 @@ body {
 
 .step-content p {
   color: var(--text-secondary);
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 /* ========== CONTATO SECTION ========== */
@@ -916,6 +951,15 @@ body {
   animation: fadeIn 0.3s ease-out forwards;
   word-wrap: break-word;
 }
+
+.message-content {
+  font-size: 0.85rem; /* Alinhado com o tamanho base */
+}
+
+.chat-input::placeholder {
+  font-size: 0.85rem;
+}
+
 
 .message-ai {
   background-color: rgba(255, 255, 255, 0.05);
@@ -1212,6 +1256,10 @@ body {
 }
 
 /* ========== FOOTER ========== */
+.footer-logo {
+  font-size: 1.9rem; /* Reduzido de 2.2rem */
+}
+
 .footer {
   background-color: var(--background-darker);
   padding: 5rem 0 2rem;
@@ -1439,6 +1487,10 @@ body {
     max-width: 280px;
     margin: 0 auto 3.5rem;
   }
+
+  .hero-title, .modern-hero .hero-title {
+    font-size: 2.6rem; /* Reduzido proporcionalmente */
+  }
   
   .btn {
     width: 100%;
@@ -1615,6 +1667,15 @@ body {
     max-width: 300px;
     margin: 0 auto;
   }
+
+    .mobile-links a, .mobile-dropdown-trigger {
+    font-size: 1.6rem; /* Reduzido proporcionalmente */
+  }
+  
+  .service-content-text h2 {
+    font-size: 1.9rem;
+  }
+
   
   /* Testimonials */
   .testimonials-slider {
@@ -1700,7 +1761,7 @@ body {
   }
   
   .section-title {
-    font-size: 1.8rem;
+    font-size: 1.7rem;
   }
   
   .hero-stat {
@@ -1711,6 +1772,14 @@ body {
   .hero-stat-number {
     font-size: 2.5rem;
     min-width: 80px;
+  }
+
+  .hero-title, .modern-hero .hero-title {
+    font-size: 2.1rem; /* Reduzido proporcionalmente */
+  }
+
+  .mobile-links a, .mobile-dropdown-trigger {
+    font-size: 1.4rem;
   }
   
   .chat-preview, .chat-container {
@@ -1784,4 +1853,21 @@ body {
   padding: 0.8rem 1rem;
   margin-bottom: 1.5rem;
   border-radius: var(--border-radius-sm);
+}
+
+.contact-card-title {
+  font-size: 1.3rem; /* Reduzido proporcionalmente */
+}
+
+.form-title {
+  font-size: 1.5rem; /* Reduzido proporcionalmente */
+}
+
+.form-subtitle {
+  font-size: 0.9rem; /* Reduzido proporcionalmente */
+}
+
+/* Ajuste para diminuir tamanhos de ícones se necessário */
+.service-icon i, .feature-icon i {
+  font-size: 90%; /* Redução sutil dos ícones */
 }
