@@ -14,7 +14,7 @@ postgrest==0.10.6
 redis==4.5.5
 
 # Modelos de dados e validação
-pydantic==2.3.0
+pydantic==2.4.0
 pydantic[email]==2.3.0
 python-multipart==0.0.6
 
