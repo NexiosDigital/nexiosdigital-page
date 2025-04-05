@@ -41,8 +41,6 @@ websockets==11.0.3
 python-dotenv==1.0.0
 loguru==0.7.0
 
-# Opcional: para LangChain (se usado)
-langchain==0.0.314
 
 # Compressão de resposta
 gzip-fastapi==0.3.0
