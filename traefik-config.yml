@@ -24,6 +24,13 @@ http:
         customRequestHeaders:
           Connection: "Upgrade"
           Upgrade: "websocket"
+    # Novo middleware para tratamento de SPA
+    spa-handler:
+      errors:
+        status:
+          - "404"
+        service: "nexiosdigital-frontend"
+        query: "/{path}"
 
   routers:
     # Roteador para API
@@ -48,6 +55,17 @@ http:
         - "cors-headers"
         - "websocket-headers"  # Adicionar middleware específico para WebSockets
       priority: 100
+    
+    # Novo roteador explícito para o frontend com tratamento SPA
+    frontend:
+      rule: "Host(`nexiosdigital.com`, `www.nexiosdigital.com`) && !PathPrefix(`/api`, `/ws`)"
+      service: "nexiosdigital-frontend"
+      entryPoints:
+        - "websecure"
+      tls: {}
+      middlewares:
+        - "spa-handler"
+      priority: 10
   
     # Roteador para redirecionamento HTTP para HTTPS
     http-catchall:
@@ -67,3 +85,10 @@ http:
         passHostHeader: true
         responseForwarding:
           flushInterval: "100ms"  # Melhorar resposta para WebSockets
+    
+    # Definição do serviço para o frontend
+    nexiosdigital-frontend:
+      loadBalancer:
+        servers:
+          - url: "http://nginx:80"
+        passHostHeader: true
