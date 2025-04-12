@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
+import CustomCursor from "./components/CustomCursor"; // Importando o novo componente
 
 // Páginas de Serviço (importadas do arquivo de índice)
 import {
@@ -27,7 +28,20 @@ function App() {
 			setLoading(false);
 		}, 1000);
 
-		return () => clearTimeout(timer);
+		// Adicionar classe ao body para esconder o cursor padrão
+		const isMobile =
+			/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+				navigator.userAgent
+			);
+
+		if (!isMobile) {
+			document.body.classList.add("custom-cursor-active");
+		}
+
+		return () => {
+			clearTimeout(timer);
+			document.body.classList.remove("custom-cursor-active");
+		};
 	}, []);
 
 	if (loading) {
@@ -41,6 +55,7 @@ function App() {
 	return (
 		<Router>
 			<div className="app dark">
+				<CustomCursor /> {/* Adicionando o cursor personalizado */}
 				<Navbar />
 				<main className="main-content">
 					<Routes>
