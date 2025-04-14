@@ -10,7 +10,8 @@ COPY package*.json ./
 
 # Instalar dependências com definição de network timeout maior
 RUN npm config set fetch-timeout 300000 && \
-  npm install
+  npm install && \
+  npm install @supabase/supabase-js
 
 # Copiar o resto dos arquivos
 COPY . .
