@@ -12,60 +12,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
  */
 export class AuthService {
 	/**
-	 * Registra um novo usuário
-	 * @param {string} email Email do usuário
-	 * @param {string} password Senha do usuário
-	 * @param {Object} userData Dados adicionais do usuário
-	 * @returns {Promise<Object>} Resultado do registro
-	 */
-	async registerUser(email, password, userData = {}) {
-		try {
-			// 1. Criar usuário na autenticação do Supabase
-			const { data: authData, error: authError } = await supabase.auth.signUp({
-				email,
-				password,
-			});
-
-			if (authError) throw authError;
-
-			if (authData.user) {
-				// 2. Adicionar dados extras na tabela de perfis
-				const { error: profileError } = await supabase
-					.from("user_profiles")
-					.insert([
-						{
-							user_id: authData.user.id,
-							name: userData.name || "",
-							client_id: userData.client_id,
-							role: userData.role || "user",
-							is_active: true,
-							preferences: userData.preferences || {},
-						},
-					]);
-
-				if (profileError) {
-					console.error("Erro ao criar perfil:", profileError);
-					// Se falhar ao criar perfil, tentar excluir o usuário para manter consistência
-					await supabase.auth.admin.deleteUser(authData.user.id);
-					throw profileError;
-				}
-
-				return {
-					user: authData.user,
-					profile: {
-						name: userData.name,
-						client_id: userData.client_id,
-						role: userData.role || "user",
-					},
-				};
-			}
-		} catch (error) {
-			console.error("Erro ao registrar usuário:", error);
-			throw error;
-		}
-	}
-
-	/**
 	 * Faz login de um usuário
 	 * @param {string} email Email do usuário
 	 * @param {string} password Senha do usuário
@@ -215,6 +161,126 @@ export class AuthService {
 	}
 
 	/**
+	 * Solicita acesso à plataforma (para novos clientes)
+	 * @param {Object} requestData Dados da solicitação
+	 * @returns {Promise<void>}
+	 */
+	async requestAccess(requestData) {
+		try {
+			const { error } = await supabase.from("access_requests").insert([
+				{
+					name: requestData.name,
+					email: requestData.email,
+					company: requestData.company,
+					phone: requestData.phone,
+					message: requestData.message,
+					status: "pending",
+					created_at: new Date().toISOString(),
+				},
+			]);
+
+			if (error) throw error;
+		} catch (error) {
+			console.error("Erro ao solicitar acesso:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Verifica um token de convite
+	 * @param {string} token Token do convite
+	 * @returns {Promise<Object>} Dados do convite
+	 */
+	async verifyInviteToken(token) {
+		try {
+			const { data, error } = await supabase
+				.from("invites")
+				.select("*, clients(name)")
+				.eq("token", token)
+				.single();
+
+			if (error) throw error;
+			return data;
+		} catch (error) {
+			console.error("Erro ao verificar token de convite:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Registra um usuário usando um convite
+	 * @param {string} token Token do convite
+	 * @param {Object} userData Dados do usuário
+	 * @returns {Promise<Object>} Resultado do registro
+	 */
+	async registerWithInvite(token, userData) {
+		try {
+			// 1. Verificar o convite
+			const invite = await this.verifyInviteToken(token);
+
+			if (!invite || invite.status !== "pending") {
+				throw new Error("Convite inválido ou já utilizado");
+			}
+
+			if (new Date(invite.expires_at) < new Date()) {
+				throw new Error("Convite expirado");
+			}
+
+			// 2. Criar usuário na autenticação do Supabase
+			const { data: authData, error: authError } = await supabase.auth.signUp({
+				email: invite.email,
+				password: userData.password,
+			});
+
+			if (authError) throw authError;
+
+			if (authData.user) {
+				// 3. Criar perfil do usuário
+				const { error: profileError } = await supabase
+					.from("user_profiles")
+					.insert([
+						{
+							user_id: authData.user.id,
+							name: userData.name,
+							client_id: invite.client_id,
+							role: invite.role || "user",
+							is_active: true,
+							preferences: {},
+						},
+					]);
+
+				if (profileError) {
+					console.error("Erro ao criar perfil:", profileError);
+					// Se falhar ao criar perfil, tentar excluir o usuário
+					await supabase.auth.admin.deleteUser(authData.user.id);
+					throw profileError;
+				}
+
+				// 4. Marcar convite como usado
+				await supabase
+					.from("invites")
+					.update({
+						status: "accepted",
+						used_at: new Date().toISOString(),
+					})
+					.eq("token", token);
+
+				return {
+					user: authData.user,
+					profile: {
+						name: userData.name,
+						client_id: invite.client_id,
+						role: invite.role || "user",
+					},
+				};
+			}
+		} catch (error) {
+			console.error("Erro ao registrar com convite:", error);
+			throw error;
+		}
+	}
+
+	/**
 	 * Atualiza dados do usuário
 	 * @param {Object} userData Dados a serem atualizados
 	 * @returns {Promise<Object>} Dados atualizados
@@ -282,6 +348,25 @@ export class AuthService {
 	}
 
 	/**
+	 * Valida token de reset de senha
+	 * @param {string} accessToken Token de acesso
+	 * @returns {Promise<void>}
+	 */
+	async validateResetToken(accessToken) {
+		try {
+			const { error } = await supabase.auth.setSession({
+				access_token: accessToken,
+				refresh_token: "", // Não necessário para validação
+			});
+
+			if (error) throw error;
+		} catch (error) {
+			console.error("Erro ao validar token de reset:", error);
+			throw error;
+		}
+	}
+
+	/**
 	 * Configura nova senha após recuperação
 	 * @param {string} newPassword Nova senha
 	 * @returns {Promise<void>}
@@ -312,11 +397,15 @@ export class AuthService {
 			// Definir permissões por role
 			const rolePermissions = {
 				admin: [
+					"admin_access",
 					"view_dashboard",
 					"manage_automations",
 					"manage_users",
+					"manage_clients",
+					"manage_invites",
 					"view_reports",
 					"manage_settings",
+					"view_logs",
 					"api_access",
 				],
 				manager: [
@@ -339,6 +428,176 @@ export class AuthService {
 		} catch (error) {
 			console.error("Erro ao verificar permissão:", error);
 			return false;
+		}
+	}
+
+	/**
+	 * Métodos administrativos (apenas para administradores)
+	 */
+
+	/**
+	 * Cria um convite para um novo usuário
+	 * @param {Object} inviteData Dados do convite
+	 * @returns {Promise<Object>} Convite criado
+	 */
+	async createInvite(inviteData) {
+		try {
+			const user = await this.getCurrentUser();
+			if (!user || user.profile.role !== "admin") {
+				throw new Error("Acesso negado");
+			}
+
+			// Gerar token único
+			const token = crypto.randomUUID();
+			const expiresAt = new Date();
+			expiresAt.setDate(expiresAt.getDate() + 7); // Expira em 7 dias
+
+			const { data, error } = await supabase
+				.from("invites")
+				.insert([
+					{
+						email: inviteData.email,
+						client_id: inviteData.client_id,
+						role: inviteData.role || "user",
+						invited_name: inviteData.name,
+						invited_by: user.id,
+						token: token,
+						expires_at: expiresAt.toISOString(),
+						status: "pending",
+					},
+				])
+				.select()
+				.single();
+
+			if (error) throw error;
+			return data;
+		} catch (error) {
+			console.error("Erro ao criar convite:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Lista todos os convites
+	 * @returns {Promise<Array>} Lista de convites
+	 */
+	async getInvites() {
+		try {
+			const user = await this.getCurrentUser();
+			if (!user || user.profile.role !== "admin") {
+				throw new Error("Acesso negado");
+			}
+
+			const { data, error } = await supabase
+				.from("invites")
+				.select(
+					"*, clients(name), invited_by_user:user_profiles!invited_by(name)"
+				)
+				.order("created_at", { ascending: false });
+
+			if (error) throw error;
+			return data;
+		} catch (error) {
+			console.error("Erro ao listar convites:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Cancela um convite
+	 * @param {string} inviteId ID do convite
+	 * @returns {Promise<void>}
+	 */
+	async cancelInvite(inviteId) {
+		try {
+			const user = await this.getCurrentUser();
+			if (!user || user.profile.role !== "admin") {
+				throw new Error("Acesso negado");
+			}
+
+			const { error } = await supabase
+				.from("invites")
+				.update({ status: "cancelled" })
+				.eq("id", inviteId);
+
+			if (error) throw error;
+		} catch (error) {
+			console.error("Erro ao cancelar convite:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Lista todos os clientes
+	 * @returns {Promise<Array>} Lista de clientes
+	 */
+	async getClients() {
+		try {
+			const user = await this.getCurrentUser();
+			if (!user || user.profile.role !== "admin") {
+				throw new Error("Acesso negado");
+			}
+
+			const { data, error } = await supabase
+				.from("clients")
+				.select("*")
+				.order("name");
+
+			if (error) throw error;
+			return data;
+		} catch (error) {
+			console.error("Erro ao listar clientes:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Cria um novo cliente
+	 * @param {Object} clientData Dados do cliente
+	 * @returns {Promise<Object>} Cliente criado
+	 */
+	async createClient(clientData) {
+		try {
+			const user = await this.getCurrentUser();
+			if (!user || user.profile.role !== "admin") {
+				throw new Error("Acesso negado");
+			}
+
+			const { data, error } = await supabase
+				.from("clients")
+				.insert([clientData])
+				.select()
+				.single();
+
+			if (error) throw error;
+			return data;
+		} catch (error) {
+			console.error("Erro ao criar cliente:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Lista todas as solicitações de acesso
+	 * @returns {Promise<Array>} Lista de solicitações
+	 */
+	async getAccessRequests() {
+		try {
+			const user = await this.getCurrentUser();
+			if (!user || user.profile.role !== "admin") {
+				throw new Error("Acesso negado");
+			}
+
+			const { data, error } = await supabase
+				.from("access_requests")
+				.select("*")
+				.order("created_at", { ascending: false });
+
+			if (error) throw error;
+			return data;
+		} catch (error) {
+			console.error("Erro ao listar solicitações de acesso:", error);
+			throw error;
 		}
 	}
 }

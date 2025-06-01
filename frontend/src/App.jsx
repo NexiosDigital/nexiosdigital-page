@@ -9,10 +9,8 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
-// Remova a importação do CustomCursor se não existir
-// import CustomCursor from "./components/CustomCursor";
 
-// Páginas de Serviço (importadas do arquivo de índice)
+// Páginas de Serviço
 import {
 	AICustomerService,
 	SalesAutomation,
@@ -20,10 +18,16 @@ import {
 	ClickupAutomation,
 } from "./pages/services";
 
-// Novos componentes para o Dashboard de Clientes
+// Sistema de Autenticação e Dashboard
 import Login from "./components/Login";
+import Register from "./components/Register";
 import Dashboard from "./components/Dashboard";
+import AdminPanel from "./components/AdminPanel";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute";
+import InviteRegister from "./components/InviteRegister";
+import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
 import { AuthProvider } from "./contexts/AuthContext";
 import * as AuthServiceModule from "./services/AuthService";
 
@@ -39,20 +43,8 @@ function App() {
 			setLoading(false);
 		}, 1000);
 
-		// Comentado por enquanto - ative após criar o CustomCursor
-		// Adicionar classe ao body para esconder o cursor padrão
-		// const isMobile =
-		//   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-		//     navigator.userAgent
-		//   );
-		//
-		// if (!isMobile) {
-		//   document.body.classList.add("custom-cursor-active");
-		// }
-
 		return () => {
 			clearTimeout(timer);
-			// document.body.classList.remove("custom-cursor-active");
 		};
 	}, []);
 
@@ -68,19 +60,21 @@ function App() {
 		<AuthProvider authService={authService}>
 			<Router>
 				<div className="app dark">
-					{/* Comente o CustomCursor até que você o implemente */}
-					{/* <CustomCursor /> */}
-
 					{/* Renderizar Navbar condicionalmente */}
 					<Routes>
 						<Route path="/login" element={null} />
+						<Route path="/register" element={null} />
+						<Route path="/invite/*" element={null} />
+						<Route path="/forgot-password" element={null} />
+						<Route path="/reset-password" element={null} />
 						<Route path="/dashboard/*" element={null} />
+						<Route path="/admin/*" element={null} />
 						<Route path="*" element={<Navbar />} />
 					</Routes>
 
 					<main className="main-content">
 						<Routes>
-							{/* Rotas públicas existentes */}
+							{/* Rotas públicas */}
 							<Route path="/" element={<Home />} />
 							<Route path="/about" element={<About />} />
 							<Route path="/ai-chat" element={<AIChat />} />
@@ -103,16 +97,64 @@ function App() {
 								element={<ClickupAutomation />}
 							/>
 
-							{/* Novas rotas para o Dashboard de Clientes */}
+							{/* Rotas de Autenticação */}
 							<Route
 								path="/login"
-								element={<Login authService={authService} />}
+								element={
+									<PublicRoute>
+										<Login authService={authService} />
+									</PublicRoute>
+								}
 							/>
+							<Route
+								path="/register"
+								element={
+									<PublicRoute>
+										<Register authService={authService} />
+									</PublicRoute>
+								}
+							/>
+							<Route
+								path="/invite/:token"
+								element={
+									<PublicRoute>
+										<InviteRegister authService={authService} />
+									</PublicRoute>
+								}
+							/>
+							<Route
+								path="/forgot-password"
+								element={
+									<PublicRoute>
+										<ForgotPassword authService={authService} />
+									</PublicRoute>
+								}
+							/>
+							<Route
+								path="/reset-password"
+								element={
+									<PublicRoute>
+										<ResetPassword authService={authService} />
+									</PublicRoute>
+								}
+							/>
+
+							{/* Rotas Protegidas - Dashboard do Cliente */}
 							<Route
 								path="/dashboard/*"
 								element={
 									<ProtectedRoute>
 										<Dashboard />
+									</ProtectedRoute>
+								}
+							/>
+
+							{/* Rotas Protegidas - Painel Administrativo */}
+							<Route
+								path="/admin/*"
+								element={
+									<ProtectedRoute requiredPermission="admin_access">
+										<AdminPanel />
 									</ProtectedRoute>
 								}
 							/>
@@ -125,7 +167,12 @@ function App() {
 					{/* Renderizar Footer condicionalmente */}
 					<Routes>
 						<Route path="/login" element={null} />
+						<Route path="/register" element={null} />
+						<Route path="/invite/*" element={null} />
+						<Route path="/forgot-password" element={null} />
+						<Route path="/reset-password" element={null} />
 						<Route path="/dashboard/*" element={null} />
+						<Route path="/admin/*" element={null} />
 						<Route path="*" element={<Footer />} />
 					</Routes>
 				</div>

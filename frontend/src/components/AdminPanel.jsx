@@ -1,65 +1,60 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-// Componentes do Dashboard
-import DashboardOverview from "./dashboard/DashboardOverview";
-import AutomationsList from "./dashboard/AutomationsList";
-import Reports from "./dashboard/Reports";
-import Settings from "./dashboard/Settings";
-import Support from "./dashboard/Support";
-import "../styles/Dashboard.css";
+// Componentes do Admin Panel
+import AdminOverview from "./admin/AdminOverview";
+import ClientsManagement from "./admin/ClientsManagement";
+import UsersManagement from "./admin/UsersManagement";
+import InvitesManagement from "./admin/InvitesManagement";
+import SystemSettings from "./admin/SystemSettings";
+import SystemLogs from "./admin/SystemLogs";
+import "../styles/AdminPanel.css";
 
-const Dashboard = () => {
+const AdminPanel = () => {
 	const { user, logout } = useAuth();
 	const location = useLocation();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 
-	// Menu items baseado no papel do usuário
-	const getMenuItems = () => {
-		const baseItems = [
-			{
-				path: "/dashboard",
-				icon: "fas fa-chart-line",
-				label: "Visão Geral",
-				exact: true,
-			},
-			{
-				path: "/dashboard/automations",
-				icon: "fas fa-robot",
-				label: "Automações",
-			},
-			{
-				path: "/dashboard/reports",
-				icon: "fas fa-chart-bar",
-				label: "Relatórios",
-			},
-			{
-				path: "/dashboard/support",
-				icon: "fas fa-headset",
-				label: "Suporte",
-			},
-			{
-				path: "/dashboard/settings",
-				icon: "fas fa-cog",
-				label: "Configurações",
-			},
-		];
-
-		// Adicionar itens específicos para administradores
-		if (user?.profile?.role === "admin") {
-			baseItems.splice(-1, 0, {
-				path: "/admin",
-				icon: "fas fa-users-cog",
-				label: "Painel Admin",
-				external: true,
-			});
-		}
-
-		return baseItems;
-	};
-
-	const menuItems = getMenuItems();
+	const menuItems = [
+		{
+			path: "/admin",
+			icon: "fas fa-tachometer-alt",
+			label: "Visão Geral",
+			exact: true,
+		},
+		{
+			path: "/admin/clients",
+			icon: "fas fa-building",
+			label: "Clientes",
+		},
+		{
+			path: "/admin/users",
+			icon: "fas fa-users",
+			label: "Usuários",
+		},
+		{
+			path: "/admin/invites",
+			icon: "fas fa-envelope-open",
+			label: "Convites",
+		},
+		{
+			path: "/admin/settings",
+			icon: "fas fa-cogs",
+			label: "Configurações",
+		},
+		{
+			path: "/admin/logs",
+			icon: "fas fa-list-alt",
+			label: "Logs do Sistema",
+		},
+		{
+			path: "/dashboard",
+			icon: "fas fa-arrow-left",
+			label: "Voltar ao Dashboard",
+			external: true,
+		},
+	];
 
 	const handleLogout = async () => {
 		try {
@@ -78,12 +73,13 @@ const Dashboard = () => {
 	};
 
 	return (
-		<div className="dashboard-layout">
+		<div className="admin-layout">
 			{/* Sidebar */}
-			<aside className={`dashboard-sidebar ${sidebarOpen ? "open" : ""}`}>
+			<aside className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}>
 				<div className="sidebar-header">
 					<div className="logo">
-						<h2>Nexios Digital</h2>
+						<h2>Admin Panel</h2>
+						<span className="subtitle">Nexios Digital</span>
 					</div>
 					<button
 						className="sidebar-toggle"
@@ -125,12 +121,12 @@ const Dashboard = () => {
 
 				<div className="sidebar-footer">
 					<div className="user-info">
-						<div className="user-avatar">
-							<i className="fas fa-user"></i>
+						<div className="user-avatar admin">
+							<i className="fas fa-user-shield"></i>
 						</div>
 						<div className="user-details">
 							<span className="user-name">{user?.profile?.name}</span>
-							<span className="user-role">{user?.profile?.role}</span>
+							<span className="user-role">Administrador</span>
 						</div>
 					</div>
 					<button className="logout-btn" onClick={handleLogout}>
@@ -141,9 +137,9 @@ const Dashboard = () => {
 			</aside>
 
 			{/* Main Content */}
-			<main className="dashboard-main">
+			<main className="admin-main">
 				{/* Header */}
-				<header className="dashboard-header">
+				<header className="admin-header">
 					<div className="header-left">
 						<button
 							className="mobile-menu-toggle"
@@ -153,31 +149,27 @@ const Dashboard = () => {
 						</button>
 						<h1 className="page-title">
 							{menuItems.find((item) => isActivePath(item.path, item.exact))
-								?.label || "Dashboard"}
+								?.label || "Admin Panel"}
 						</h1>
 					</div>
 					<div className="header-right">
-						<div className="header-info">
-							<span className="client-name">{user?.client?.name}</span>
-							<span className="plan-badge">{user?.client?.plan}</span>
-						</div>
-						<div className="user-menu">
-							<button className="user-menu-btn">
-								<i className="fas fa-user-circle"></i>
-							</button>
+						<div className="admin-badge">
+							<i className="fas fa-shield-alt"></i>
+							<span>Admin</span>
 						</div>
 					</div>
 				</header>
 
 				{/* Content Area */}
-				<div className="dashboard-content">
+				<div className="admin-content">
 					<Routes>
-						<Route index element={<DashboardOverview />} />
-						<Route path="automations" element={<AutomationsList />} />
-						<Route path="reports" element={<Reports />} />
-						<Route path="settings" element={<Settings />} />
-						<Route path="support" element={<Support />} />
-						<Route path="*" element={<Navigate to="/dashboard" replace />} />
+						<Route index element={<AdminOverview />} />
+						<Route path="clients" element={<ClientsManagement />} />
+						<Route path="users" element={<UsersManagement />} />
+						<Route path="invites" element={<InvitesManagement />} />
+						<Route path="settings" element={<SystemSettings />} />
+						<Route path="logs" element={<SystemLogs />} />
+						<Route path="*" element={<Navigate to="/admin" replace />} />
 					</Routes>
 				</div>
 			</main>
@@ -193,4 +185,4 @@ const Dashboard = () => {
 	);
 };
 
-export default Dashboard;
+export default AdminPanel;
