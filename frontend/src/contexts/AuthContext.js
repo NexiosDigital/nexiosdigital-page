@@ -1,10 +1,7 @@
-// src/contexts/AuthContext.js
 import React, { createContext, useState, useEffect, useContext } from "react";
 
-// Cria o contexto de autenticação
 const AuthContext = createContext(null);
 
-// Hook personalizado para usar o contexto de autenticação
 export const useAuth = () => {
 	const context = useContext(AuthContext);
 	if (!context) {
@@ -13,41 +10,68 @@ export const useAuth = () => {
 	return context;
 };
 
-// Provedor de autenticação para envolver a aplicação
 export const AuthProvider = ({ children, authService }) => {
 	const [user, setUser] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
-	// Verificar autenticação ao carregar
 	useEffect(() => {
 		const checkAuth = async () => {
 			try {
-				// Tenta recuperar a sessão e usuário atual
+				console.log("🔍 Verificando autenticação...");
+
+				if (!authService) {
+					console.log("❌ AuthService não disponível");
+					setLoading(false);
+					return;
+				}
+
 				const session = await authService.getSession();
-				if (session) {
+				console.log("📋 Sessão encontrada:", !!session);
+
+				if (session && session.user) {
+					console.log("👤 Usuário na sessão:", session.user.email);
+
 					const currentUser = await authService.getCurrentUser();
-					setUser(currentUser);
+					console.log("📊 Dados do usuário:", currentUser);
+
+					if (currentUser) {
+						setUser(currentUser);
+						console.log("✅ Usuário autenticado:", currentUser.email);
+					} else {
+						console.log("❌ Falha ao obter dados do usuário");
+						setUser(null);
+					}
+				} else {
+					console.log("❌ Nenhuma sessão válida encontrada");
+					setUser(null);
 				}
 			} catch (err) {
-				console.error("Erro ao verificar autenticação:", err);
+				console.error("❌ Erro ao verificar autenticação:", err);
 				setError(err);
+				setUser(null);
 			} finally {
 				setLoading(false);
+				console.log("✅ Verificação de autenticação concluída");
 			}
 		};
 
 		checkAuth();
 	}, [authService]);
 
-	// Função para fazer login
 	const login = async (email, password) => {
 		try {
 			setLoading(true);
-			const { user } = await authService.login(email, password);
-			setUser(user);
-			return user;
+			setError(null);
+			console.log("🔐 Tentando fazer login:", email);
+
+			const result = await authService.login(email, password);
+			console.log("✅ Login bem-sucedido:", result.user.email);
+
+			setUser(result.user);
+			return result.user;
 		} catch (err) {
+			console.error("❌ Erro no login:", err);
 			setError(err);
 			throw err;
 		} finally {
@@ -55,13 +79,18 @@ export const AuthProvider = ({ children, authService }) => {
 		}
 	};
 
-	// Função para fazer logout
 	const logout = async () => {
 		try {
 			setLoading(true);
+			console.log("🚪 Fazendo logout...");
+
 			await authService.logout();
 			setUser(null);
+			setError(null);
+
+			console.log("✅ Logout concluído");
 		} catch (err) {
+			console.error("❌ Erro no logout:", err);
 			setError(err);
 			throw err;
 		} finally {
@@ -69,27 +98,84 @@ export const AuthProvider = ({ children, authService }) => {
 		}
 	};
 
-	// Função para registrar um novo usuário
-	const register = async (email, password, userData) => {
+	const hasPermission = async (permission) => {
 		try {
-			setLoading(true);
-			const result = await authService.registerUser(email, password, userData);
+			console.log(
+				"🔐 Verificando permissão:",
+				permission,
+				"para usuário:",
+				user?.email
+			);
+
+			// Se não há usuário, não tem permissão
+			if (!user) {
+				console.log("❌ Usuário não autenticado, negando permissão");
+				return false;
+			}
+
+			// Se não há authService, não pode verificar
+			if (!authService || !authService.hasPermission) {
+				console.log(
+					"⚠️ AuthService.hasPermission não disponível, verificando role diretamente"
+				);
+
+				// Fallback: verificar role diretamente
+				const userRole = user.profile?.role;
+				console.log("👤 Role do usuário:", userRole);
+
+				// Definir permissões básicas por role
+				const rolePermissions = {
+					admin: [
+						"admin_access", // ← ESTA É A PERMISSÃO QUE ESTAVA FALTANDO!
+						"view_dashboard",
+						"manage_automations",
+						"manage_users",
+						"manage_clients",
+						"manage_invites",
+						"view_reports",
+						"manage_settings",
+						"view_logs",
+						"api_access",
+						"system_admin", // Permissão extra para admin
+						"full_access", // Permissão total
+					],
+					manager: [
+						"view_dashboard",
+						"manage_automations",
+						"view_reports",
+						"view_users",
+					],
+					user: ["view_dashboard", "view_automations", "limited_reports"],
+					viewer: ["view_dashboard", "limited_reports"],
+				};
+
+				const permissions = rolePermissions[userRole] || [];
+				const hasPermission = permissions.includes(permission);
+
+				console.log(
+					`✅ Permissão ${permission} para role ${userRole}:`,
+					hasPermission
+				);
+				return hasPermission;
+			}
+
+			// Usar o authService se disponível
+			const result = await authService.hasPermission(permission);
+			console.log(
+				`✅ Resultado da verificação de permissão ${permission}:`,
+				result
+			);
 			return result;
-		} catch (err) {
-			setError(err);
-			throw err;
-		} finally {
-			setLoading(false);
+		} catch (error) {
+			console.error("❌ Erro ao verificar permissão:", error);
+			return false;
 		}
 	};
 
-	// Função para atualizar o perfil do usuário
 	const updateProfile = async (userData) => {
 		try {
 			setLoading(true);
 			const updatedProfile = await authService.updateUserProfile(userData);
-
-			// Atualiza o usuário local com os novos dados
 			setUser((current) => ({
 				...current,
 				profile: {
@@ -97,7 +183,6 @@ export const AuthProvider = ({ children, authService }) => {
 					...updatedProfile,
 				},
 			}));
-
 			return updatedProfile;
 		} catch (err) {
 			setError(err);
@@ -107,12 +192,6 @@ export const AuthProvider = ({ children, authService }) => {
 		}
 	};
 
-	// Função para verificar permissões
-	const hasPermission = async (permission) => {
-		return await authService.hasPermission(permission);
-	};
-
-	// Função para solicitar redefinição de senha
 	const resetPassword = async (email) => {
 		try {
 			setLoading(true);
@@ -125,7 +204,6 @@ export const AuthProvider = ({ children, authService }) => {
 		}
 	};
 
-	// Função para confirmar redefinição de senha
 	const confirmPasswordReset = async (newPassword) => {
 		try {
 			setLoading(true);
@@ -138,14 +216,12 @@ export const AuthProvider = ({ children, authService }) => {
 		}
 	};
 
-	// Valor do contexto
 	const value = {
 		user,
 		loading,
 		error,
 		login,
 		logout,
-		register,
 		updateProfile,
 		hasPermission,
 		resetPassword,
@@ -155,5 +231,4 @@ export const AuthProvider = ({ children, authService }) => {
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
 export default AuthContext;

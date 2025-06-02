@@ -1,26 +1,33 @@
 import React, { useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
-/**
- * Componente para rotas públicas (login, registro, etc.)
- * Redireciona usuários já autenticados para o dashboard
- */
 const PublicRoute = ({ children }) => {
 	const { user, loading } = useAuth();
 
 	useEffect(() => {
-		// Se o usuário já estiver autenticado, redireciona para o dashboard
+		console.log("🔍 PublicRoute - Verificando usuário:", {
+			user: !!user,
+			loading,
+			userEmail: user?.email,
+			userRole: user?.profile?.role,
+		});
+
+		// ⚠️ CORREÇÃO: Só redirecionar se realmente estiver autenticado E não estiver carregando
 		if (user && !loading) {
-			// Verifica se é admin para redirecionar para painel correto
+			console.log("🔄 Usuário autenticado, redirecionando...");
+
+			// Verificar papel do usuário para decidir o redirecionamento
 			if (user.profile && user.profile.role === "admin") {
+				console.log("👑 Admin detectado, redirecionando para /admin");
 				window.location.href = "/admin";
 			} else {
+				console.log("👤 Usuário regular, redirecionando para /dashboard");
 				window.location.href = "/dashboard";
 			}
 		}
 	}, [user, loading]);
 
-	// Se estiver carregando, exibe loading
+	// ⚠️ CORREÇÃO: Mostrar loading enquanto carrega
 	if (loading) {
 		return (
 			<div className="flex justify-center items-center h-screen bg-gray-900">
@@ -29,12 +36,14 @@ const PublicRoute = ({ children }) => {
 		);
 	}
 
-	// Se não estiver autenticado, renderiza o conteúdo da rota pública
+	// ⚠️ CORREÇÃO: Só renderizar se NÃO estiver autenticado
 	if (!user) {
+		console.log("✅ Usuário não autenticado, renderizando rota pública");
 		return children;
 	}
 
-	// Se estiver autenticado, não renderiza nada (será redirecionado)
+	// ⚠️ CORREÇÃO: Se chegou aqui e tem usuário, não renderizar nada (será redirecionado)
+	console.log("⏳ Usuário autenticado, aguardando redirecionamento...");
 	return null;
 };
 

@@ -30,16 +30,14 @@ import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import { AuthProvider } from "./contexts/AuthContext";
 import * as AuthServiceModule from "./services/AuthService";
-import AdminAccess from "./components/AdminAccess";
+import AdminAccess from "./components/AdminAccess"; // Manter para rota específica
 
-// Instanciar o serviço de autenticação
 const authService = new AuthServiceModule.AuthService();
 
 function App() {
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		// Simular tempo de carregamento
 		const timer = setTimeout(() => {
 			setLoading(false);
 		}, 1000);
@@ -66,8 +64,11 @@ function App() {
 						<Route path="/login" element={null} />
 						<Route path="/register" element={null} />
 						<Route path="/invite/*" element={null} />
-						<Route path="/admin" element={<AdminAccess />} />
-						<Route path="/admin-panel" element={<AdminAccess />} />
+						{/* ✅ CORREÇÃO: Remover estas linhas que redirecionam para AdminAccess */}
+						{/* <Route path="/admin" element={<AdminAccess />} /> */}
+						{/* <Route path="/admin-panel" element={<AdminAccess />} /> */}
+						<Route path="/admin-access" element={null} />{" "}
+						{/* AdminAccess em rota específica */}
 						<Route path="/forgot-password" element={null} />
 						<Route path="/reset-password" element={null} />
 						<Route path="/dashboard/*" element={null} />
@@ -82,10 +83,8 @@ function App() {
 							<Route path="/about" element={<About />} />
 							<Route path="/ai-chat" element={<AIChat />} />
 
-							{/* ADMIN SEM PROTEÇÃO - ADICIONAR AQUI */}
-							<Route path="/admin" element={<AdminAccess />} />
-							<Route path="/admin-panel" element={<AdminAccess />} />
-							<Route path="/nexios-admin" element={<AdminAccess />} />
+							{/* ✅ CORREÇÃO: AdminAccess apenas em rota específica (opcional) */}
+							<Route path="/admin-access" element={<AdminAccess />} />
 
 							{/* Rotas de Serviços */}
 							<Route
@@ -157,7 +156,15 @@ function App() {
 								}
 							/>
 
-							{/* Rotas Protegidas - Painel Administrativo */}
+							{/* ✅ CORREÇÃO: Rotas de Admin - Direto para AdminPanel */}
+							<Route
+								path="/admin"
+								element={
+									<ProtectedRoute requiredPermission="admin_access">
+										<AdminPanel />
+									</ProtectedRoute>
+								}
+							/>
 							<Route
 								path="/admin/*"
 								element={
