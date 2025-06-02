@@ -672,3 +672,269 @@
 .auth-form.loading .btn {
   cursor: not-allowed;
 }
+
+/* Melhorias para Auth Error Messages */
+.auth-error {
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  background-color: rgba(255, 77, 106, 0.15);
+  border: 1px solid rgba(255, 77, 106, 0.3);
+  color: var(--error);
+  animation: slideInError 0.3s ease-out;
+}
+
+@keyframes slideInError {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-error i {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+/* Estados de validação para inputs */
+.form-input.input-error,
+.form-select.input-error,
+.form-textarea.input-error {
+  border-color: var(--error);
+  box-shadow: 0 0 0 2px rgba(255, 77, 106, 0.2);
+  background-color: rgba(255, 77, 106, 0.05);
+}
+
+.form-input.input-valid,
+.form-select.input-valid,
+.form-textarea.input-valid {
+  border-color: var(--success);
+  box-shadow: 0 0 0 2px rgba(12, 214, 138, 0.2);
+  background-color: rgba(12, 214, 138, 0.05);
+}
+
+/* Feedback visual para campos obrigatórios */
+.form-label::after {
+  content: " *";
+  color: var(--error);
+  font-weight: 600;
+}
+
+.form-label[data-optional]::after {
+  content: " (opcional)";
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+/* Melhorias para botões desabilitados */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+
+.btn.btn-primary:disabled {
+  background: rgba(255, 62, 108, 0.3);
+  border-color: rgba(255, 62, 108, 0.3);
+}
+
+/* Loading state específico para formulários */
+.auth-form.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.auth-form.loading .form-input,
+.auth-form.loading .form-select,
+.auth-form.loading .form-textarea {
+  background-color: rgba(255, 255, 255, 0.03);
+  cursor: not-allowed;
+}
+
+/* Animação para spinner nos botões */
+.btn i.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Melhorias para mensagens de sucesso */
+.auth-success {
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  background-color: rgba(12, 214, 138, 0.15);
+  border: 1px solid rgba(12, 214, 138, 0.3);
+  color: var(--success);
+  animation: slideInSuccess 0.3s ease-out;
+}
+
+@keyframes slideInSuccess {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-success i {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+/* Hover effects melhorados */
+.form-input:hover:not(:disabled),
+.form-select:hover:not(:disabled),
+.form-textarea:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.form-input:focus:not(.input-error),
+.form-select:focus:not(.input-error),
+.form-textarea:focus:not(.input-error) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 62, 108, 0.2);
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+/* Feedback visual para campos obrigatórios vazios */
+.form-input:invalid:not(:focus):not(:placeholder-shown) {
+  border-color: rgba(255, 77, 106, 0.5);
+}
+
+/* Melhorias para placeholders */
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+/* Container de erro individual por campo */
+.field-error {
+  color: var(--error);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  animation: slideInError 0.2s ease-out;
+}
+
+.field-error::before {
+  content: "⚠";
+  font-size: 0.9rem;
+}
+
+/* Melhorias para loading container */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 2rem;
+  min-height: 300px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--accent);
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 1.5rem;
+}
+
+.loading-container p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Melhorias para responsividade */
+@media (max-width: 768px) {
+  .auth-error,
+  .auth-success {
+    padding: 0.8rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .auth-error i,
+  .auth-success i {
+    font-size: 1rem;
+  }
+  
+  .field-error {
+    font-size: 0.75rem;
+  }
+}
+
+/* Estados de validação mais suaves */
+.form-input.validating {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 62, 108, 0.1);
+}
+
+/* Animação para transições de estado */
+.form-input,
+.form-select,
+.form-textarea {
+  transition: all 0.3s ease;
+}
+
+/* Melhorias para link buttons */
+.link-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Container de ações melhorado */
+.form-action {
+  margin-top: 1.5rem;
+}
+
+.form-action .btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.form-action .btn:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 62, 108, 0.3);
+}
+
+/* Melhorias para labels opcionais */
+.form-label[data-optional="true"]::after {
+  content: " (opcional)";
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 0.8rem;
+}

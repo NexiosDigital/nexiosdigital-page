@@ -30,6 +30,7 @@ import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import { AuthProvider } from "./contexts/AuthContext";
 import * as AuthServiceModule from "./services/AuthService";
+import AdminAccess from "./components/AdminAccess";
 
 // Instanciar o serviço de autenticação
 const authService = new AuthServiceModule.AuthService();
@@ -65,6 +66,8 @@ function App() {
 						<Route path="/login" element={null} />
 						<Route path="/register" element={null} />
 						<Route path="/invite/*" element={null} />
+						<Route path="/admin" element={<AdminAccess />} />
+						<Route path="/admin-panel" element={<AdminAccess />} />
 						<Route path="/forgot-password" element={null} />
 						<Route path="/reset-password" element={null} />
 						<Route path="/dashboard/*" element={null} />
@@ -78,6 +81,11 @@ function App() {
 							<Route path="/" element={<Home />} />
 							<Route path="/about" element={<About />} />
 							<Route path="/ai-chat" element={<AIChat />} />
+
+							{/* ADMIN SEM PROTEÇÃO - ADICIONAR AQUI */}
+							<Route path="/admin" element={<AdminAccess />} />
+							<Route path="/admin-panel" element={<AdminAccess />} />
+							<Route path="/nexios-admin" element={<AdminAccess />} />
 
 							{/* Rotas de Serviços */}
 							<Route

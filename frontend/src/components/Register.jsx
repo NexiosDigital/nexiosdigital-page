@@ -21,41 +21,97 @@ const Register = ({ authService }) => {
 			...prev,
 			[name]: value,
 		}));
+		// Limpar erro quando o usuário começar a digitar
+		if (error) {
+			setError("");
+		}
+	};
+
+	const validateForm = () => {
+		// Validação de campos obrigatórios
+		if (!formData.name.trim()) {
+			setError("Por favor, preencha seu nome completo");
+			return false;
+		}
+
+		if (!formData.email.trim()) {
+			setError("Por favor, preencha seu email");
+			return false;
+		}
+
+		// Validação de email
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(formData.email)) {
+			setError("Por favor, insira um email válido");
+			return false;
+		}
+
+		if (!formData.company.trim()) {
+			setError("Por favor, preencha o nome da empresa");
+			return false;
+		}
+
+		// Validação de telefone (se preenchido)
+		if (formData.phone && formData.phone.trim()) {
+			const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+			const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, "");
+			if (!phoneRegex.test(cleanPhone)) {
+				setError("Por favor, insira um telefone válido");
+				return false;
+			}
+		}
+
+		return true;
 	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError("");
+
+		// Validar formulário antes de enviar
+		if (!validateForm()) {
+			return;
+		}
+
 		setLoading(true);
 
 		try {
-			// Validações básicas
-			if (
-				!formData.name.trim() ||
-				!formData.email.trim() ||
-				!formData.company.trim()
-			) {
-				throw new Error("Por favor, preencha todos os campos obrigatórios");
+			// Verificar se authService está disponível
+			if (!authService) {
+				throw new Error("Serviço de autenticação não disponível");
 			}
 
 			// Enviar solicitação de registro
 			await authService.requestAccess({
-				name: formData.name,
-				email: formData.email,
-				company: formData.company,
-				phone: formData.phone,
-				message: formData.message,
+				name: formData.name.trim(),
+				email: formData.email.trim().toLowerCase(),
+				company: formData.company.trim(),
+				phone: formData.phone.trim() || null,
+				message: formData.message.trim() || null,
 			});
 
 			setSuccess(true);
 		} catch (err) {
 			console.error("Erro ao solicitar acesso:", err);
-			setError(err.message || "Erro ao enviar solicitação");
+
+			// Tratar diferentes tipos de erro
+			if (err.message) {
+				setError(err.message);
+			} else if (err.response?.data?.detail) {
+				setError(err.response.data.detail);
+			} else if (err.response?.data?.message) {
+				setError(err.response.data.message);
+			} else {
+				setError(
+					"Erro ao enviar solicitação. Tente novamente em alguns minutos."
+				);
+			}
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	// Tela de sucesso
 	if (success) {
 		return (
 			<div className="auth-page">
@@ -104,7 +160,12 @@ const Register = ({ authService }) => {
 							</p>
 						</div>
 
-						{error && <div className="auth-error">{error}</div>}
+						{error && (
+							<div className="auth-error">
+								<i className="fas fa-exclamation-triangle"></i>
+								{error}
+							</div>
+						)}
 
 						<form className="auth-form" onSubmit={handleSubmit}>
 							<div className="form-group">
@@ -115,11 +176,14 @@ const Register = ({ authService }) => {
 									type="text"
 									id="name"
 									name="name"
-									className="form-input"
+									className={`form-input ${
+										error && !formData.name.trim() ? "input-error" : ""
+									}`}
 									value={formData.name}
 									onChange={handleChange}
 									required
 									disabled={loading}
+									placeholder="Seu nome completo"
 								/>
 							</div>
 
@@ -131,11 +195,14 @@ const Register = ({ authService }) => {
 									type="email"
 									id="email"
 									name="email"
-									className="form-input"
+									className={`form-input ${
+										error && !formData.email.trim() ? "input-error" : ""
+									}`}
 									value={formData.email}
 									onChange={handleChange}
 									required
 									disabled={loading}
+									placeholder="seu.email@empresa.com"
 								/>
 							</div>
 
@@ -147,11 +214,14 @@ const Register = ({ authService }) => {
 									type="text"
 									id="company"
 									name="company"
-									className="form-input"
+									className={`form-input ${
+										error && !formData.company.trim() ? "input-error" : ""
+									}`}
 									value={formData.company}
 									onChange={handleChange}
 									required
 									disabled={loading}
+									placeholder="Nome da empresa"
 								/>
 							</div>
 
@@ -191,7 +261,12 @@ const Register = ({ authService }) => {
 								<button
 									type="submit"
 									className="btn btn-primary full-width"
-									disabled={loading}
+									disabled={
+										loading ||
+										!formData.name.trim() ||
+										!formData.email.trim() ||
+										!formData.company.trim()
+									}
 								>
 									{loading ? (
 										<>
@@ -215,6 +290,7 @@ const Register = ({ authService }) => {
 									type="button"
 									onClick={() => navigate("/login")}
 									className="link-button"
+									disabled={loading}
 								>
 									Fazer login
 								</button>
