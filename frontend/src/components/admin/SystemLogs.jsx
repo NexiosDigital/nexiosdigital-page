@@ -191,4 +191,4 @@ const SystemLogs = () => {
 	);
 };
 
-export { SystemLogs };
+export default SystemLogs;

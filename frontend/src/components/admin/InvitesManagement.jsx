@@ -132,7 +132,8 @@ const InvitesManagement = () => {
 	};
 
 	const handleCancelInvite = async (inviteId) => {
-		if (!confirm("Tem certeza que deseja cancelar este convite?")) {
+		// ✅ CORREÇÃO: Usar window.confirm ao invés de confirm
+		if (!window.confirm("Tem certeza que deseja cancelar este convite?")) {
 			return;
 		}
 

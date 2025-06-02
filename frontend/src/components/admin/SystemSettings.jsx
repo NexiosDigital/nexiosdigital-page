@@ -210,4 +210,4 @@ const SystemSettings = () => {
 	);
 };
 
-export { SystemSettings };
+export default SystemSettings;

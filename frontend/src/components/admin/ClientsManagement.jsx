@@ -103,7 +103,7 @@ const ClientsManagement = () => {
 		try {
 			const client = clients.find((c) => c.id === clientId);
 			if (
-				!confirm(
+				!window.confirm(
 					`Tem certeza que deseja ${
 						client.active ? "desativar" : "ativar"
 					} este cliente?`
@@ -410,4 +410,5 @@ const ClientsManagement = () => {
 	);
 };
 
-export { ClientsManagement };
+// MUDANÇA PRINCIPAL: Usar export default ao invés de export nomeado
+export default ClientsManagement;

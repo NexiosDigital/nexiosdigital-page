@@ -75,7 +75,7 @@ const UsersManagement = () => {
 		try {
 			const user = users.find((u) => u.id === userId);
 			if (
-				!confirm(
+				!window.confirm(
 					`Tem certeza que deseja ${
 						user.is_active ? "desativar" : "ativar"
 					} este usuário?`
@@ -267,4 +267,5 @@ const UsersManagement = () => {
 	);
 };
 
-export { UsersManagement };
+// MUDANÇA: Usar export default
+export default UsersManagement;

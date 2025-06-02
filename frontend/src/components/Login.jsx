@@ -1,6 +1,6 @@
-// src/components/Login.jsx
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import "../styles/Auth.css";
 
 const Login = () => {
 	const [email, setEmail] = useState("");

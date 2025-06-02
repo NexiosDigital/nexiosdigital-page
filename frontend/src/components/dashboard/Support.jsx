@@ -56,4 +56,4 @@ const Support = () => {
 	);
 };
 
-export { Support };
+export default Support;
