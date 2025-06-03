@@ -38,6 +38,7 @@ export const AuthProvider = ({ children, authService }) => {
 					if (currentUser) {
 						setUser(currentUser);
 						console.log("✅ Usuário autenticado:", currentUser.email);
+						console.log("👑 Role do usuário:", currentUser.profile?.role);
 					} else {
 						console.log("❌ Falha ao obter dados do usuário");
 						setUser(null);
@@ -67,6 +68,7 @@ export const AuthProvider = ({ children, authService }) => {
 
 			const result = await authService.login(email, password);
 			console.log("✅ Login bem-sucedido:", result.user.email);
+			console.log("👑 Role após login:", result.user.profile?.role);
 
 			setUser(result.user);
 			return result.user;
@@ -98,7 +100,8 @@ export const AuthProvider = ({ children, authService }) => {
 		}
 	};
 
-	const hasPermission = async (permission) => {
+	// ✅ CORREÇÃO PRINCIPAL: Função hasPermission aprimorada
+	const hasPermission = (permission) => {
 		try {
 			console.log(
 				"🔐 Verificando permissão:",
@@ -106,6 +109,12 @@ export const AuthProvider = ({ children, authService }) => {
 				"para usuário:",
 				user?.email
 			);
+			console.log("👤 Estrutura do usuário:", {
+				id: user?.id,
+				email: user?.email,
+				profile: user?.profile,
+				role: user?.profile?.role,
+			});
 
 			// Se não há usuário, não tem permissão
 			if (!user) {
@@ -113,59 +122,57 @@ export const AuthProvider = ({ children, authService }) => {
 				return false;
 			}
 
-			// Se não há authService, não pode verificar
-			if (!authService || !authService.hasPermission) {
-				console.log(
-					"⚠️ AuthService.hasPermission não disponível, verificando role diretamente"
-				);
-
-				// Fallback: verificar role diretamente
-				const userRole = user.profile?.role;
-				console.log("👤 Role do usuário:", userRole);
-
-				// Definir permissões básicas por role
-				const rolePermissions = {
-					admin: [
-						"admin_access", // ← ESTA É A PERMISSÃO QUE ESTAVA FALTANDO!
-						"view_dashboard",
-						"manage_automations",
-						"manage_users",
-						"manage_clients",
-						"manage_invites",
-						"view_reports",
-						"manage_settings",
-						"view_logs",
-						"api_access",
-						"system_admin", // Permissão extra para admin
-						"full_access", // Permissão total
-					],
-					manager: [
-						"view_dashboard",
-						"manage_automations",
-						"view_reports",
-						"view_users",
-					],
-					user: ["view_dashboard", "view_automations", "limited_reports"],
-					viewer: ["view_dashboard", "limited_reports"],
-				};
-
-				const permissions = rolePermissions[userRole] || [];
-				const hasPermission = permissions.includes(permission);
-
-				console.log(
-					`✅ Permissão ${permission} para role ${userRole}:`,
-					hasPermission
-				);
-				return hasPermission;
+			// Se não há perfil, não tem permissão
+			if (!user.profile) {
+				console.log("❌ Usuário sem perfil, negando permissão");
+				return false;
 			}
 
-			// Usar o authService se disponível
-			const result = await authService.hasPermission(permission);
+			const userRole = user.profile.role;
+			console.log("👤 Role do usuário:", userRole);
+
+			// ✅ DEFINIÇÃO CORRIGIDA DE PERMISSÕES
+			const rolePermissions = {
+				admin: [
+					"admin_access",
+					"view_dashboard",
+					"manage_automations",
+					"manage_users",
+					"manage_clients",
+					"manage_invites",
+					"view_reports",
+					"manage_settings",
+					"view_logs",
+					"api_access",
+					"system_admin",
+					"full_access",
+				],
+				manager: [
+					"view_dashboard",
+					"manage_automations",
+					"view_reports",
+					"view_users",
+				],
+				user: ["view_dashboard", "view_automations", "limited_reports"],
+				viewer: ["view_dashboard", "limited_reports"],
+			};
+
+			// Verificar se a role existe
+			if (!rolePermissions[userRole]) {
+				console.log("❌ Role desconhecida:", userRole);
+				return false;
+			}
+
+			const permissions = rolePermissions[userRole];
+			const hasPermission = permissions.includes(permission);
+
 			console.log(
-				`✅ Resultado da verificação de permissão ${permission}:`,
-				result
+				`✅ Permissão ${permission} para role ${userRole}:`,
+				hasPermission
 			);
-			return result;
+			console.log("📋 Permissões disponíveis:", permissions);
+
+			return hasPermission;
 		} catch (error) {
 			console.error("❌ Erro ao verificar permissão:", error);
 			return false;
@@ -223,7 +230,7 @@ export const AuthProvider = ({ children, authService }) => {
 		login,
 		logout,
 		updateProfile,
-		hasPermission,
+		hasPermission, // ✅ CORREÇÃO: Função simples, não async
 		resetPassword,
 		confirmPasswordReset,
 		setUser,
@@ -231,4 +238,5 @@ export const AuthProvider = ({ children, authService }) => {
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
 export default AuthContext;

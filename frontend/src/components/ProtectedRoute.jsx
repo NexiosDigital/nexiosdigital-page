@@ -7,10 +7,11 @@ const ProtectedRoute = ({ children, requiredPermission = null }) => {
 	const [hasRequiredPermission, setHasRequiredPermission] = useState(true);
 
 	useEffect(() => {
-		const checkPermission = async () => {
+		const checkPermission = () => {
 			console.log("🔐 ProtectedRoute - Verificando permissões...");
 			console.log("👤 Usuário:", user?.email);
 			console.log("🎯 Permissão necessária:", requiredPermission);
+			console.log("👑 Role do usuário:", user?.profile?.role);
 
 			// Se não precisar verificar permissão específica
 			if (!requiredPermission) {
@@ -28,26 +29,53 @@ const ProtectedRoute = ({ children, requiredPermission = null }) => {
 				return;
 			}
 
+			// ✅ CORREÇÃO PRINCIPAL: Verificação direta sem async
 			try {
-				// ✅ CORREÇÃO: Verificar se hasPermission é uma função
+				console.log("🔧 Verificando permissão com hasPermission...");
+
+				// Verificar se hasPermission é uma função
 				if (typeof hasPermission !== "function") {
 					console.error(
 						"❌ hasPermission não é uma função:",
 						typeof hasPermission
 					);
 
-					// Fallback: verificar role diretamente
+					// Fallback melhorado: verificar role e permissão específica
 					const userRole = user.profile?.role;
-					const isAdmin = userRole === "admin";
-					console.log(`⚠️ Fallback - Role: ${userRole}, É admin?`, isAdmin);
+					console.log(`⚠️ Usando fallback - Role: ${userRole}`);
 
-					setHasRequiredPermission(isAdmin);
+					// Definir permissões de fallback
+					const adminPermissions = [
+						"admin_access",
+						"view_dashboard",
+						"manage_automations",
+						"manage_users",
+						"manage_clients",
+						"manage_invites",
+						"view_reports",
+						"manage_settings",
+						"view_logs",
+					];
+
+					const hasPermissionFallback =
+						userRole === "admin" &&
+						adminPermissions.includes(requiredPermission);
+					console.log(
+						`⚠️ Resultado do fallback para ${requiredPermission}:`,
+						hasPermissionFallback
+					);
+
+					setHasRequiredPermission(hasPermissionFallback);
 					setPermissionChecked(true);
 					return;
 				}
 
-				const result = await hasPermission(requiredPermission);
-				console.log(`✅ Resultado da verificação de permissão:`, result);
+				// Usar a função hasPermission normalmente
+				const result = hasPermission(requiredPermission);
+				console.log(
+					`✅ Resultado da verificação de permissão ${requiredPermission}:`,
+					result
+				);
 				setHasRequiredPermission(result);
 			} catch (error) {
 				console.error("❌ Erro ao verificar permissão:", error);
@@ -59,19 +87,27 @@ const ProtectedRoute = ({ children, requiredPermission = null }) => {
 					`⚠️ Erro - Fallback para role: ${userRole}, É admin?`,
 					isAdmin
 				);
-				setHasRequiredPermission(isAdmin);
+
+				// Para admin_access, verificar se é admin
+				if (requiredPermission === "admin_access") {
+					setHasRequiredPermission(isAdmin);
+				} else {
+					setHasRequiredPermission(false);
+				}
 			} finally {
 				setPermissionChecked(true);
 			}
 		};
 
-		if (user && !permissionChecked) {
+		// Só verificar se o usuário foi carregado
+		if (!loading && user) {
 			checkPermission();
-		} else if (!user) {
+		} else if (!loading && !user) {
+			// Usuário não autenticado
 			setPermissionChecked(true);
 			setHasRequiredPermission(false);
 		}
-	}, [user, requiredPermission, hasPermission, permissionChecked]);
+	}, [user, requiredPermission, hasPermission, loading]);
 
 	// Se estiver carregando, exibe loading
 	if (loading) {
@@ -101,17 +137,66 @@ const ProtectedRoute = ({ children, requiredPermission = null }) => {
 	// Se não tiver a permissão necessária
 	if (requiredPermission && !hasRequiredPermission) {
 		return (
-			<div className="flex flex-col justify-center items-center h-screen bg-gray-900 text-white">
-				<h1 className="text-2xl font-bold mb-4">Acesso Negado</h1>
-				<p className="mb-6">Você não tem permissão para acessar esta página.</p>
-				<p className="mb-6">Permissão necessária: {requiredPermission}</p>
-				<p className="mb-6">Sua role: {user.profile?.role}</p>
-				<button
-					onClick={() => (window.location.href = "/dashboard")}
-					className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-				>
-					Voltar para o Dashboard
-				</button>
+			<div className="flex flex-col justify-center items-center h-screen bg-gray-900 text-white p-8">
+				<div className="text-center max-w-md">
+					<div className="mb-6">
+						<i className="fas fa-shield-alt text-6xl text-red-500 mb-4"></i>
+					</div>
+					<h1 className="text-3xl font-bold mb-4 text-red-400">
+						Acesso Negado
+					</h1>
+					<p className="mb-4 text-gray-300">
+						Você não tem permissão para acessar esta página.
+					</p>
+
+					{/* Informações de Debug */}
+					<div className="bg-gray-800 p-4 rounded-lg mb-6 text-left text-sm">
+						<p className="mb-2">
+							<strong>Permissão necessária:</strong> {requiredPermission}
+						</p>
+						<p className="mb-2">
+							<strong>Sua role:</strong> {user.profile?.role}
+						</p>
+						<p className="mb-2">
+							<strong>Email:</strong> {user.email}
+						</p>
+						<p className="mb-2">
+							<strong>hasPermission disponível:</strong> {typeof hasPermission}
+						</p>
+					</div>
+
+					<div className="space-y-3">
+						<button
+							onClick={() => (window.location.href = "/dashboard")}
+							className="w-full px-6 py-3 bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+						>
+							<i className="fas fa-home mr-2"></i>
+							Voltar para o Dashboard
+						</button>
+
+						<button
+							onClick={() => window.location.reload()}
+							className="w-full px-6 py-3 bg-gray-600 rounded-md hover:bg-gray-700 transition-colors"
+						>
+							<i className="fas fa-sync mr-2"></i>
+							Recarregar Página
+						</button>
+
+						{user.profile?.role === "admin" && (
+							<button
+								onClick={() => {
+									console.log("🔧 Forçando acesso como admin...");
+									// Força a permissão para admin
+									setHasRequiredPermission(true);
+								}}
+								className="w-full px-6 py-3 bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+							>
+								<i className="fas fa-key mr-2"></i>
+								Forçar Acesso (Admin)
+							</button>
+						)}
+					</div>
+				</div>
 			</div>
 		);
 	}

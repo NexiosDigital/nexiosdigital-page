@@ -14,6 +14,7 @@ const Dashboard = () => {
 	const { user, logout } = useAuth();
 	const location = useLocation();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
 	// Menu items baseado no papel do usuário
 	const getMenuItems = () => {
@@ -61,6 +62,49 @@ const Dashboard = () => {
 
 	const menuItems = getMenuItems();
 
+	// Função para alternar sidebar colapsada
+	const toggleSidebarCollapse = () => {
+		setSidebarCollapsed(!sidebarCollapsed);
+		// Salvar preferência no localStorage
+		localStorage.setItem("dashboard_sidebar_collapsed", !sidebarCollapsed);
+	};
+
+	// Função para alternar sidebar mobile
+	const toggleSidebarMobile = () => {
+		setSidebarOpen(!sidebarOpen);
+	};
+
+	// Carregar preferência de sidebar do localStorage
+	useEffect(() => {
+		const savedCollapse = localStorage.getItem("dashboard_sidebar_collapsed");
+		if (savedCollapse === "true") {
+			setSidebarCollapsed(true);
+		}
+	}, []);
+
+	// Fechar sidebar mobile ao mudar de rota
+	useEffect(() => {
+		setSidebarOpen(false);
+	}, [location.pathname]);
+
+	// Fechar sidebar mobile ao clicar fora
+	useEffect(() => {
+		const handleClickOutside = (event) => {
+			if (
+				sidebarOpen &&
+				!event.target.closest(".dashboard-sidebar") &&
+				!event.target.closest(".mobile-menu-toggle")
+			) {
+				setSidebarOpen(false);
+			}
+		};
+
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, [sidebarOpen]);
+
 	const handleLogout = async () => {
 		try {
 			await logout();
@@ -80,16 +124,25 @@ const Dashboard = () => {
 	return (
 		<div className="dashboard-layout">
 			{/* Sidebar */}
-			<aside className={`dashboard-sidebar ${sidebarOpen ? "open" : ""}`}>
+			<aside
+				className={`dashboard-sidebar ${sidebarCollapsed ? "collapsed" : ""} ${
+					sidebarOpen ? "open" : ""
+				}`}
+			>
 				<div className="sidebar-header">
 					<div className="logo">
 						<h2>Nexios Digital</h2>
 					</div>
 					<button
 						className="sidebar-toggle"
-						onClick={() => setSidebarOpen(!sidebarOpen)}
+						onClick={toggleSidebarCollapse}
+						title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
 					>
-						<i className="fas fa-bars"></i>
+						<i
+							className={`fas fa-${
+								sidebarCollapsed ? "chevron-right" : "chevron-left"
+							}`}
+						></i>
 					</button>
 				</div>
 
@@ -103,6 +156,7 @@ const Dashboard = () => {
 										className={`nav-link ${
 											isActivePath(item.path, item.exact) ? "active" : ""
 										}`}
+										title={item.label}
 									>
 										<i className={item.icon}></i>
 										<span>{item.label}</span>
@@ -113,6 +167,7 @@ const Dashboard = () => {
 										className={`nav-link ${
 											isActivePath(item.path, item.exact) ? "active" : ""
 										}`}
+										title={item.label}
 									>
 										<i className={item.icon}></i>
 										<span>{item.label}</span>
@@ -129,11 +184,17 @@ const Dashboard = () => {
 							<i className="fas fa-user"></i>
 						</div>
 						<div className="user-details">
-							<span className="user-name">{user?.profile?.name}</span>
+							<span className="user-name" title={user?.profile?.name}>
+								{user?.profile?.name}
+							</span>
 							<span className="user-role">{user?.profile?.role}</span>
 						</div>
 					</div>
-					<button className="logout-btn" onClick={handleLogout}>
+					<button
+						className="logout-btn"
+						onClick={handleLogout}
+						title="Fazer logout"
+					>
 						<i className="fas fa-sign-out-alt"></i>
 						<span>Sair</span>
 					</button>
@@ -147,7 +208,8 @@ const Dashboard = () => {
 					<div className="header-left">
 						<button
 							className="mobile-menu-toggle"
-							onClick={() => setSidebarOpen(!sidebarOpen)}
+							onClick={toggleSidebarMobile}
+							title="Menu"
 						>
 							<i className="fas fa-bars"></i>
 						</button>
@@ -158,11 +220,18 @@ const Dashboard = () => {
 					</div>
 					<div className="header-right">
 						<div className="header-info">
-							<span className="client-name">{user?.client?.name}</span>
-							<span className="plan-badge">{user?.client?.plan}</span>
+							<span className="client-name" title={user?.client?.name}>
+								{user?.client?.name || "Nexios Digital"}
+							</span>
+							<span
+								className="plan-badge"
+								title={`Plano ${user?.client?.plan || "admin"}`}
+							>
+								{user?.client?.plan || "admin"}
+							</span>
 						</div>
 						<div className="user-menu">
-							<button className="user-menu-btn">
+							<button className="user-menu-btn" title="Menu do usuário">
 								<i className="fas fa-user-circle"></i>
 							</button>
 						</div>
@@ -185,7 +254,7 @@ const Dashboard = () => {
 			{/* Overlay for mobile */}
 			{sidebarOpen && (
 				<div
-					className="sidebar-overlay"
+					className={`sidebar-overlay ${sidebarOpen ? "show" : ""}`}
 					onClick={() => setSidebarOpen(false)}
 				></div>
 			)}
