@@ -1,434 +1,942 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+/* Dashboard Layout Otimizado com Sidebar Colapsível */
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a0e 0%, #1a1a24 100%);
+  color: var(--text-primary);
+  position: relative;
+}
 
-// Componentes do Dashboard
-import DashboardOverview from "./dashboard/DashboardOverview";
-import AutomationsList from "./dashboard/AutomationsList";
-import Reports from "./dashboard/Reports";
-import Settings from "./dashboard/Settings";
-import Support from "./dashboard/Support";
+/* ========== SIDEBAR COM FUNCIONALIDADE COLAPSÍVEL ========== */
+.dashboard-sidebar {
+  width: 280px;
+  background: linear-gradient(180deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 14, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 62, 108, 0.15);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 1000;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
 
-// Estilos
-import "../styles/Dashboard.css";
+/* Sidebar Colapsada (apenas desktop) */
+.dashboard-sidebar.collapsed {
+  width: 72px;
+}
 
-const Dashboard = () => {
-	const { user, logout } = useAuth();
-	const location = useLocation();
-	
-	// Estados para controle da sidebar
-	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-	const [isMobile, setIsMobile] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
+.dashboard-sidebar.collapsed .nav-link span,
+.dashboard-sidebar.collapsed .user-details,
+.dashboard-sidebar.collapsed .logout-btn span,
+.dashboard-sidebar.collapsed .logo h2 {
+  opacity: 0;
+  transform: translateX(-20px);
+  pointer-events: none;
+}
 
-	// Menu items baseado no papel do usuário
-	const menuItems = useMemo(() => {
-		const baseItems = [
-			{
-				path: "/dashboard",
-				icon: "fas fa-chart-line",
-				label: "Visão Geral",
-				exact: true,
-			},
-			{
-				path: "/dashboard/automations",
-				icon: "fas fa-robot",
-				label: "Automações",
-			},
-			{
-				path: "/dashboard/reports",
-				icon: "fas fa-chart-bar",
-				label: "Relatórios",
-			},
-			{
-				path: "/dashboard/support",
-				icon: "fas fa-headset",
-				label: "Suporte",
-			},
-			{
-				path: "/dashboard/settings",
-				icon: "fas fa-cog",
-				label: "Configurações",
-			},
-		];
+.dashboard-sidebar.collapsed .sidebar-header {
+  padding: 1.5rem 1rem;
+  justify-content: center;
+}
 
-		// Adicionar itens específicos para administradores
-		if (user?.profile?.role === "admin") {
-			baseItems.splice(-1, 0, {
-				path: "/admin",
-				icon: "fas fa-users-cog",
-				label: "Painel Admin",
-				external: true,
-			});
-		}
+.dashboard-sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 1rem;
+}
 
-		return baseItems;
-	}, [user?.profile?.role]);
+.dashboard-sidebar.collapsed .user-info {
+  justify-content: center;
+}
 
-	// Detectar se é mobile e gerenciar resize
-	useEffect(() => {
-		const checkMobile = () => {
-			const mobile = window.innerWidth < 1024;
-			setIsMobile(mobile);
-			
-			// Se mudou de mobile para desktop, resetar estados
-			if (!mobile && sidebarOpen) {
-				setSidebarOpen(false);
-			}
-		};
+.dashboard-sidebar.collapsed .logout-btn {
+  justify-content: center;
+  padding: 0.8rem;
+}
 
-		// Função debounced para otimizar performance
-		let timeoutId;
-		const debouncedResize = () => {
-			clearTimeout(timeoutId);
-			timeoutId = setTimeout(checkMobile, 150);
-		};
+/* Mobile: Ocultar sidebar */
+.dashboard-sidebar.mobile-hidden {
+  transform: translateX(-100%);
+}
 
-		checkMobile();
-		window.addEventListener('resize', debouncedResize);
-		
-		return () => {
-			window.removeEventListener('resize', debouncedResize);
-			clearTimeout(timeoutId);
-		};
-	}, [sidebarOpen]);
+/* Mobile: Mostrar sidebar */
+.dashboard-sidebar.open {
+  transform: translateX(0);
+}
 
-	// Carregar preferência de sidebar do localStorage
-	useEffect(() => {
-		try {
-			const savedCollapse = localStorage.getItem("dashboard_sidebar_collapsed");
-			if (savedCollapse === "true" && !isMobile) {
-				setSidebarCollapsed(true);
-			}
-		} catch (error) {
-			console.warn('Erro ao carregar preferências da sidebar:', error);
-		}
-	}, [isMobile]);
+/* ========== SIDEBAR HEADER ========== */
+.sidebar-header {
+  padding: 2rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 62, 108, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.08) 0%, transparent 100%);
+  position: relative;
+  transition: all 0.4s ease;
+}
 
-	// Fechar sidebar mobile ao mudar de rota
-	useEffect(() => {
-		if (isMobile) {
-			setSidebarOpen(false);
-		}
-	}, [location.pathname, isMobile]);
+.sidebar-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-accent);
+}
 
-	// Fechar sidebar mobile ao clicar fora (só em mobile)
-	useEffect(() => {
-		if (!isMobile) return;
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
 
-		const handleClickOutside = (event) => {
-			// Verificar se clicou fora da sidebar e não foi no botão de menu
-			if (
-				sidebarOpen &&
-				!event.target.closest(".dashboard-sidebar") &&
-				!event.target.closest(".mobile-menu-toggle")
-			) {
-				setSidebarOpen(false);
-			}
-		};
+.logo h2 {
+  color: var(--accent);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(45deg, var(--accent), var(--accent-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transition: all 0.4s ease;
+}
 
-		document.addEventListener("mousedown", handleClickOutside);
-		document.addEventListener("touchstart", handleClickOutside);
-		
-		return () => {
-			document.removeEventListener("mousedown", handleClickOutside);
-			document.removeEventListener("touchstart", handleClickOutside);
-		};
-	}, [sidebarOpen, isMobile]);
+/* Botão de Toggle da Sidebar */
+.sidebar-toggle {
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.2) 0%, rgba(255, 62, 108, 0.1) 100%);
+  border: 1px solid rgba(255, 62, 108, 0.3);
+  color: var(--accent);
+  font-size: 1.1rem;
+  cursor: pointer;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(255, 62, 108, 0.2);
+}
 
-	// Atalhos de teclado
-	useEffect(() => {
-		const handleKeyDown = (event) => {
-			// Ignorar se estiver em um input/textarea
-			if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-				return;
-			}
+.sidebar-toggle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 62, 108, 0.3), transparent);
+  transition: left 0.5s ease;
+}
 
-			// Ctrl/Cmd + B para colapsar sidebar
-			if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
-				event.preventDefault();
-				if (!isMobile) {
-					toggleSidebarCollapse();
-				}
-			}
+.sidebar-toggle:hover::before {
+  left: 100%;
+}
 
-			// ESC para fechar sidebar mobile
-			if (event.key === 'Escape' && isMobile && sidebarOpen) {
-				setSidebarOpen(false);
-			}
-		};
+.sidebar-toggle:hover {
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.3) 0%, rgba(255, 62, 108, 0.2) 100%);
+  border-color: var(--accent);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(255, 62, 108, 0.4);
+}
 
-		document.addEventListener('keydown', handleKeyDown);
-		return () => document.removeEventListener('keydown', handleKeyDown);
-	}, [isMobile, sidebarOpen]);
+.sidebar-toggle i {
+  transition: transform 0.3s ease;
+}
 
-	// Função para alternar sidebar colapsada (apenas desktop)
-	const toggleSidebarCollapse = useCallback(() => {
-		if (isMobile) return;
-		
-		const newCollapsed = !sidebarCollapsed;
-		setSidebarCollapsed(newCollapsed);
-		
-		// Salvar preferência no localStorage
-		try {
-			localStorage.setItem("dashboard_sidebar_collapsed", newCollapsed.toString());
-		} catch (error) {
-			console.warn('Erro ao salvar preferências da sidebar:', error);
-		}
-	}, [sidebarCollapsed, isMobile]);
+.sidebar-toggle:hover i {
+  transform: rotate(180deg);
+}
 
-	// Função para alternar sidebar mobile
-	const toggleSidebarMobile = useCallback(() => {
-		if (!isMobile) return;
-		setSidebarOpen(prev => !prev);
-	}, [isMobile]);
+/* ========== NAVIGATION ========== */
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 62, 108, 0.3) transparent;
+}
 
-	// Função de logout otimizada
-	const handleLogout = useCallback(async () => {
-		if (isLoading) return;
-		
-		try {
-			setIsLoading(true);
-			await logout();
-			// Redirecionamento será tratado pelo AuthContext
-		} catch (error) {
-			console.error("Erro ao fazer logout:", error);
-			// Você pode adicionar uma notificação de erro aqui
-		} finally {
-			setIsLoading(false);
-		}
-	}, [logout, isLoading]);
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
 
-	// Verificar se um path está ativo
-	const isActivePath = useCallback((path, exact = false) => {
-		if (exact) {
-			return location.pathname === path;
-		}
-		return location.pathname.startsWith(path);
-	}, [location.pathname]);
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-	// Obter título da página atual
-	const getCurrentPageTitle = useCallback(() => {
-		const currentItem = menuItems.find((item) => 
-			isActivePath(item.path, item.exact)
-		);
-		return currentItem?.label || "Dashboard";
-	}, [menuItems, isActivePath]);
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 62, 108, 0.3);
+  border-radius: 2px;
+}
 
-	// Classes CSS para a sidebar
-	const sidebarClasses = useMemo(() => {
-		const classes = ["dashboard-sidebar"];
-		
-		if (sidebarCollapsed && !isMobile) {
-			classes.push("collapsed");
-		}
-		
-		if (isMobile) {
-			if (sidebarOpen) {
-				classes.push("open");
-			} else {
-				classes.push("mobile-hidden");
-			}
-		}
-		
-		return classes.join(" ");
-	}, [sidebarCollapsed, isMobile, sidebarOpen]);
+.nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
 
-	// Renderizar link de navegação
-	const renderNavLink = useCallback((item) => {
-		const isActive = isActivePath(item.path, item.exact);
-		const linkClass = `nav-link ${isActive ? "active" : ""}`;
-		const tooltip = sidebarCollapsed && !isMobile ? item.label : "";
+.nav-item {
+  margin-bottom: 0.3rem;
+}
 
-		if (item.external) {
-			return (
-				<a
-					key={item.path}
-					href={item.path}
-					className={linkClass}
-					title={tooltip}
-					aria-label={item.label}
-				>
-					<i className={item.icon} aria-hidden="true"></i>
-					<span>{item.label}</span>
-				</a>
-			);
-		}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem 1.5rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-left: 3px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
 
-		return (
-			<Link
-				key={item.path}
-				to={item.path}
-				className={linkClass}
-				title={tooltip}
-				aria-label={item.label}
-			>
-				<i className={item.icon} aria-hidden="true"></i>
-				<span>{item.label}</span>
-			</Link>
-		);
-	}, [isActivePath, sidebarCollapsed, isMobile]);
+.nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 62, 108, 0.15), rgba(255, 62, 108, 0.08));
+  transition: width 0.4s ease;
+  z-index: -1;
+}
 
-	// Prevenir scroll quando sidebar mobile está aberta
-	useEffect(() => {
-		if (isMobile && sidebarOpen) {
-			document.body.style.overflow = 'hidden';
-		} else {
-			document.body.style.overflow = 'auto';
-		}
+.nav-link:hover::before {
+  width: 100%;
+}
 
-		// Cleanup function
-		return () => {
-			document.body.style.overflow = 'auto';
-		};
-	}, [isMobile, sidebarOpen]);
+.nav-link:hover {
+  background-color: rgba(255, 62, 108, 0.08);
+  color: var(--accent);
+  border-left-color: var(--accent);
+  transform: translateX(8px);
+}
 
-	return (
-		<div className="dashboard-layout">
-			{/* Sidebar */}
-			<aside className={sidebarClasses}>
-				<div className="sidebar-header">
-					<div className="logo">
-						<h2>Nexios Digital</h2>
-					</div>
-					
-					{/* Botão de toggle apenas no desktop */}
-					{!isMobile && (
-						<button
-							className="sidebar-toggle"
-							onClick={toggleSidebarCollapse}
-							title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
-							type="button"
-							aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
-						>
-							<i
-								className={`fas fa-chevron-${sidebarCollapsed ? "right" : "left"}`}
-								aria-hidden="true"
-							></i>
-						</button>
-					)}
-				</div>
+.nav-link.active {
+  background: linear-gradient(90deg, rgba(255, 62, 108, 0.2), rgba(255, 62, 108, 0.08));
+  color: var(--accent);
+  border-left-color: var(--accent);
+  box-shadow: inset 0 0 25px rgba(255, 62, 108, 0.15);
+}
 
-				<nav className="sidebar-nav" role="navigation" aria-label="Menu principal">
-					<ul className="nav-list">
-						{menuItems.map((item) => (
-							<li key={item.path} className="nav-item">
-								{renderNavLink(item)}
-							</li>
-						))}
-					</ul>
-				</nav>
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 35px;
+  background: var(--gradient-accent);
+  border-radius: 2px 0 0 2px;
+  box-shadow: 0 0 10px rgba(255, 62, 108, 0.5);
+}
 
-				<div className="sidebar-footer">
-					<div className="user-info">
-						<div className="user-avatar" aria-hidden="true">
-							<i className="fas fa-user"></i>
-						</div>
-						<div className="user-details">
-							<span 
-								className="user-name" 
-								title={user?.profile?.name}
-								aria-label={`Usuário: ${user?.profile?.name}`}
-							>
-								{user?.profile?.name}
-							</span>
-							<span className="user-role">{user?.profile?.role}</span>
-						</div>
-					</div>
-					
-					<button
-						className="logout-btn"
-						onClick={handleLogout}
-						disabled={isLoading}
-						title="Fazer logout"
-						type="button"
-						aria-label="Fazer logout"
-					>
-						<i className={`fas fa-${isLoading ? 'spinner fa-spin' : 'sign-out-alt'}`} aria-hidden="true"></i>
-						<span>{isLoading ? 'Saindo...' : 'Sair'}</span>
-					</button>
-				</div>
-			</aside>
+.nav-link i {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
 
-			{/* Main Content */}
-			<main className="dashboard-main">
-				{/* Header */}
-				<header className="dashboard-header">
-					<div className="header-left">
-						{/* Botão de menu mobile */}
-						{isMobile && (
-							<button
-								className="mobile-menu-toggle"
-								onClick={toggleSidebarMobile}
-								title="Abrir menu"
-								type="button"
-								aria-label="Abrir menu de navegação"
-								aria-expanded={sidebarOpen}
-							>
-								<i className="fas fa-bars" aria-hidden="true"></i>
-							</button>
-						)}
-						
-						<h1 className="page-title">
-							{getCurrentPageTitle()}
-						</h1>
-					</div>
-					
-					<div className="header-right">
-						<div className="header-info">
-							<span 
-								className="client-name" 
-								title={user?.client?.name}
-								aria-label={`Cliente: ${user?.client?.name}`}
-							>
-								{user?.client?.name || "Nexios Digital"}
-							</span>
-							<span
-								className="plan-badge"
-								title={`Plano ${user?.client?.plan || "admin"}`}
-								aria-label={`Plano: ${user?.client?.plan || "admin"}`}
-							>
-								{user?.client?.plan || "admin"}
-							</span>
-						</div>
-						
-						<div className="user-menu">
-							<button 
-								className="user-menu-btn" 
-								title="Menu do usuário"
-								type="button"
-								aria-label="Abrir menu do usuário"
-							>
-								<i className="fas fa-user-circle" aria-hidden="true"></i>
-							</button>
-						</div>
-					</div>
-				</header>
+.nav-link:hover i {
+  transform: scale(1.15);
+  color: var(--accent);
+  filter: drop-shadow(0 0 5px rgba(255, 62, 108, 0.5));
+}
 
-				{/* Content Area */}
-				<div className="dashboard-content" role="main">
-					<Routes>
-						<Route index element={<DashboardOverview />} />
-						<Route path="automations" element={<AutomationsList />} />
-						<Route path="reports" element={<Reports />} />
-						<Route path="settings" element={<Settings />} />
-						<Route path="support" element={<Support />} />
-						<Route path="*" element={<Navigate to="/dashboard" replace />} />
-					</Routes>
-				</div>
-			</main>
+.nav-link span {
+  transition: all 0.4s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
 
-			{/* Overlay for mobile */}
-			{isMobile && (
-				<div
-					className={`sidebar-overlay ${sidebarOpen ? "show" : ""}`}
-					onClick={() => setSidebarOpen(false)}
-					aria-hidden="true"
-				></div>
-			)}
-		</div>
-	);
-};
+/* ========== SIDEBAR FOOTER ========== */
+.sidebar-footer {
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 62, 108, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.05) 0%, transparent 100%);
+}
 
-export default Dashboard;
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.user-info:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 62, 108, 0.2);
+}
+
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.2) 0%, rgba(255, 62, 108, 0.1) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 62, 108, 0.2);
+  flex-shrink: 0;
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(255, 62, 108, 0.3);
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+  transition: all 0.4s ease;
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--primary);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.8rem 1rem;
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.1) 0%, rgba(255, 62, 108, 0.05) 100%);
+  border: 1px solid rgba(255, 62, 108, 0.2);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  text-decoration: none;
+  justify-content: flex-start;
+}
+
+.logout-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.2) 0%, rgba(255, 62, 108, 0.15) 100%);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 6px 20px rgba(255, 62, 108, 0.3);
+  transform: translateY(-2px);
+}
+
+.logout-btn i {
+  font-size: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.logout-btn:hover i {
+  transform: translateX(3px);
+}
+
+.logout-btn span {
+  transition: all 0.4s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.logout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ========== MAIN CONTENT ========== */
+.dashboard-main {
+  flex: 1;
+  margin-left: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ========== HEADER ========== */
+.dashboard-header {
+  background: linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 14, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 62, 108, 0.15);
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.dashboard-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-accent);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.mobile-menu-toggle {
+  background: rgba(255, 62, 108, 0.1);
+  border: 1px solid rgba(255, 62, 108, 0.2);
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 45px;
+  height: 45px;
+  border-radius: 12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: rgba(255, 62, 108, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 4px 15px rgba(255, 62, 108, 0.3);
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+  position: relative;
+}
+
+.page-title::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: var(--gradient-accent);
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 62, 108, 0.5);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.client-name {
+  font-weight: 600;
+  color: var(--primary);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.plan-badge {
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.2) 0%, rgba(255, 62, 108, 0.1) 100%);
+  color: var(--accent);
+  padding: 0.3rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 62, 108, 0.3);
+}
+
+.user-menu-btn {
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.1) 0%, rgba(255, 62, 108, 0.05) 100%);
+  border: 1px solid rgba(255, 62, 108, 0.2);
+  color: var(--accent);
+  font-size: 1.5rem;
+  cursor: pointer;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.user-menu-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 62, 108, 0.2) 0%, rgba(255, 62, 108, 0.15) 100%);
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(255, 62, 108, 0.3);
+  transform: scale(1.05);
+}
+
+/* ========== CONTENT AREA ========== */
+.dashboard-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  background-image: 
+    radial-gradient(circle at 15% 25%, rgba(255, 62, 108, 0.04) 0%, transparent 30%),
+    radial-gradient(circle at 85% 75%, rgba(255, 62, 108, 0.04) 0%, transparent 30%);
+}
+
+/* ========== SIDEBAR OVERLAY ========== */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.sidebar-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Desktop com sidebar */
+@media (min-width: 1024px) {
+  .dashboard-sidebar:not(.collapsed) + .dashboard-main {
+    margin-left: 280px;
+  }
+  
+  .dashboard-sidebar.collapsed + .dashboard-main {
+    margin-left: 72px;
+  }
+  
+  .dashboard-sidebar {
+    position: static;
+    transform: translateX(0);
+    box-shadow: none;
+  }
+  
+  .sidebar-overlay {
+    display: none;
+  }
+}
+
+/* Tablet e Mobile */
+@media (max-width: 1023px) {
+  .mobile-menu-toggle {
+    display: flex !important;
+  }
+  
+  .sidebar-overlay {
+    display: block;
+  }
+  
+  .dashboard-main {
+    margin-left: 0 !important;
+  }
+  
+  .dashboard-sidebar {
+    position: fixed;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.4);
+  }
+  
+  .dashboard-sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .header-info {
+    display: none;
+  }
+}
+
+/* Mobile específico */
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 1rem;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+  }
+  
+  .dashboard-content {
+    padding: 1rem;
+  }
+  
+  .dashboard-sidebar {
+    width: 100%;
+    max-width: 320px;
+  }
+  
+  .user-menu-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.3rem;
+  }
+}
+
+/* ========== LOADING STATES ========== */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========== DASHBOARD CARDS ========== */
+.dashboard-card {
+  background: linear-gradient(135deg, rgba(20, 20, 30, 0.8) 0%, rgba(10, 10, 14, 0.9) 100%);
+  border: 1px solid rgba(255, 62, 108, 0.1);
+  border-radius: 18px;
+  padding: 1.8rem;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-accent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.dashboard-card:hover {
+  border-color: rgba(255, 62, 108, 0.3);
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
+  transform: translateY(-5px);
+}
+
+.dashboard-card:hover::before {
+  opacity: 1;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.card-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.card-title i {
+  color: var(--accent);
+  filter: drop-shadow(0 0 5px rgba(255, 62, 108, 0.3));
+}
+
+.card-content {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ========== STATISTICS CARDS ========== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, rgba(20, 20, 30, 0.8) 0%, rgba(10, 10, 14, 0.9) 100%);
+  border: 1px solid rgba(255, 62, 108, 0.1);
+  border-radius: 18px;
+  padding: 1.8rem;
+  text-align: center;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-accent);
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+
+.stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+.stat-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 62, 108, 0.3);
+}
+
+.stat-icon {
+  width: 70px;
+  height: 70px;
+  background: var(--gradient-accent);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: white;
+  font-size: 2rem;
+  box-shadow: 0 8px 25px rgba(255, 62, 108, 0.4);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 12px 35px rgba(255, 62, 108, 0.6);
+}
+
+.stat-number {
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  background: linear-gradient(45deg, var(--accent), var(--accent-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========== EMPTY STATES ========== */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  color: var(--primary);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.empty-state p {
+  margin-bottom: 2rem;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+/* ========== UTILITIES ========== */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+.p-4 { padding: 2rem; }
+
+.d-flex { display: flex; }
+.align-items-center { align-items: center; }
+.justify-content-center { justify-content: center; }
+.justify-content-between { justify-content: space-between; }
+.flex-column { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.gap-1 { gap: 0.5rem; }
+.gap-2 { gap: 1rem; }
+.gap-3 { gap: 1.5rem; }
+
+.w-100 { width: 100%; }
+.h-100 { height: 100%; }
+
+/* Visibilidade responsiva */
+.d-none { display: none; }
+.d-block { display: block; }
+
+@media (max-width: 767px) {
+  .d-md-none { display: none; }
+  .d-md-block { display: block; }
+}
+
+@media (min-width: 768px) {
+  .d-md-none { display: none; }
+  .d-md-block { display: block; }
+}
+
+/* Melhorias de performance */
+.dashboard-sidebar,
+.dashboard-main,
+.dashboard-header,
+.dashboard-content {
+  will-change: transform;
+}
+
+/* Otimizações de GPU */
+.nav-link,
+.sidebar-toggle,
+.user-avatar,
+.logout-btn,
+.mobile-menu-toggle,
+.user-menu-btn,
+.dashboard-card,
+.stat-card {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Redução de motion para acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
