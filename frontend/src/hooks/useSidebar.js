@@ -1,55 +1,36 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useLocalStorage } from "./useLocalStorage";
+import { useMediaQuery } from "./useMediaQuery";
 
 /**
- * Hook customizado para gerenciar o estado da sidebar
- * Lida com responsividade, persistência e estados de abertura/colapso
+ * Hook customizado para gerenciar a sidebar
+ * @param {string} storageKey - Chave para persistir no localStorage
+ * @returns {Object} - Objeto com estados e funções da sidebar
  */
 export const useSidebar = (storageKey = "sidebar_collapsed") => {
+	// Estados da sidebar
+	const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(
+		storageKey,
+		false
+	);
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-	const [isMobile, setIsMobile] = useState(false);
 
 	// Detectar se é mobile
-	useEffect(() => {
-		const checkMobile = () => {
-			const mobile = window.innerWidth < 1024;
-			setIsMobile(mobile);
+	const isMobile = useMediaQuery("(max-width: 1023px)");
 
-			// Se mudou de mobile para desktop, resetar estados
-			if (!mobile && sidebarOpen) {
-				setSidebarOpen(false);
-			}
-		};
-
-		checkMobile();
-		const debouncedResize = debounce(checkMobile, 150);
-		window.addEventListener("resize", debouncedResize);
-
-		return () => window.removeEventListener("resize", debouncedResize);
-	}, [sidebarOpen]);
-
-	// Carregar preferência do localStorage
-	useEffect(() => {
-		const savedCollapse = localStorage.getItem(storageKey);
-		if (savedCollapse === "true" && !isMobile) {
-			setSidebarCollapsed(true);
-		}
-	}, [isMobile, storageKey]);
-
-	// Função para alternar sidebar colapsada (apenas desktop)
+	// Toggle sidebar colapsada (apenas desktop)
 	const toggleSidebarCollapse = useCallback(() => {
-		if (isMobile) return;
+		if (!isMobile) {
+			setSidebarCollapsed((prev) => !prev);
+		}
+	}, [isMobile, setSidebarCollapsed]);
 
-		const newCollapsed = !sidebarCollapsed;
-		setSidebarCollapsed(newCollapsed);
-		localStorage.setItem(storageKey, newCollapsed.toString());
-	}, [sidebarCollapsed, isMobile, storageKey]);
-
-	// Função para alternar sidebar mobile
+	// Toggle sidebar mobile (overlay)
 	const toggleSidebarMobile = useCallback(() => {
-		if (!isMobile) return;
-		setSidebarOpen(!sidebarOpen);
-	}, [sidebarOpen, isMobile]);
+		if (isMobile) {
+			setSidebarOpen((prev) => !prev);
+		}
+	}, [isMobile]);
 
 	// Fechar sidebar mobile
 	const closeSidebarMobile = useCallback(() => {
@@ -58,98 +39,145 @@ export const useSidebar = (storageKey = "sidebar_collapsed") => {
 		}
 	}, [isMobile]);
 
-	// Classes CSS para a sidebar
+	// Abrir sidebar mobile
+	const openSidebarMobile = useCallback(() => {
+		if (isMobile) {
+			setSidebarOpen(true);
+		}
+	}, [isMobile]);
+
+	// Função para obter classes CSS da sidebar
 	const getSidebarClasses = useCallback(
 		(baseClass = "sidebar") => {
-			return [
-				baseClass,
-				sidebarCollapsed && !isMobile ? "collapsed" : "",
-				isMobile && sidebarOpen ? "open" : "",
-				isMobile && !sidebarOpen ? "mobile-hidden" : "",
-			]
-				.filter(Boolean)
-				.join(" ");
+			const classes = [baseClass];
+
+			if (isMobile) {
+				classes.push("mobile");
+				if (sidebarOpen) {
+					classes.push("open");
+				} else {
+					classes.push("mobile-hidden");
+				}
+			} else {
+				classes.push("desktop");
+				if (sidebarCollapsed) {
+					classes.push("collapsed");
+				}
+			}
+
+			return classes.filter(Boolean).join(" ");
 		},
-		[sidebarCollapsed, isMobile, sidebarOpen]
+		[isMobile, sidebarOpen, sidebarCollapsed]
 	);
 
+	// Reset sidebar mobile quando mudar para desktop
+	useEffect(() => {
+		if (!isMobile) {
+			setSidebarOpen(false);
+		}
+	}, [isMobile]);
+
+	// Função para verificar se sidebar está visível
+	const isSidebarVisible = useCallback(() => {
+		if (isMobile) {
+			return sidebarOpen;
+		}
+		return true; // Sempre visível no desktop
+	}, [isMobile, sidebarOpen]);
+
+	// Função para verificar se sidebar está expandida
+	const isSidebarExpanded = useCallback(() => {
+		if (isMobile) {
+			return sidebarOpen;
+		}
+		return !sidebarCollapsed;
+	}, [isMobile, sidebarOpen, sidebarCollapsed]);
+
 	return {
-		sidebarOpen,
+		// Estados
 		sidebarCollapsed,
+		sidebarOpen,
 		isMobile,
+
+		// Ações
 		toggleSidebarCollapse,
 		toggleSidebarMobile,
 		closeSidebarMobile,
-		getSidebarClasses,
-		setSidebarOpen,
+		openSidebarMobile,
 		setSidebarCollapsed,
+		setSidebarOpen,
+
+		// Helpers
+		getSidebarClasses,
+		isSidebarVisible,
+		isSidebarExpanded,
 	};
 };
-
-// Utility function para debounce
-function debounce(func, wait) {
-	let timeout;
-	return function executedFunction(...args) {
-		const later = () => {
-			clearTimeout(timeout);
-			func(...args);
-		};
-		clearTimeout(timeout);
-		timeout = setTimeout(later, wait);
-	};
-}
-
-// frontend/src/hooks/useActiveRoute.js
-import { useLocation } from "react-router-dom";
-import { useCallback, useMemo } from "react";
 
 /**
- * Hook para gerenciar rotas ativas e navegação
+ * Hook simplificado para sidebar básica
+ * @param {boolean} defaultCollapsed - Estado inicial colapsado
+ * @returns {Object} - Estados e funções básicas
  */
-export const useActiveRoute = (menuItems = []) => {
-	const location = useLocation();
+export const useSimpleSidebar = (defaultCollapsed = false) => {
+	const [collapsed, setCollapsed] = useState(defaultCollapsed);
+	const isMobile = useMediaQuery("(max-width: 768px)");
 
-	// Verificar se um path está ativo
-	const isActivePath = useCallback(
-		(path, exact = false) => {
-			if (exact) {
-				return location.pathname === path;
-			}
-			return location.pathname.startsWith(path);
-		},
-		[location.pathname]
-	);
+	const toggle = useCallback(() => {
+		setCollapsed((prev) => !prev);
+	}, []);
 
-	// Obter item de menu atual
-	const currentMenuItem = useMemo(() => {
-		return menuItems.find((item) => isActivePath(item.path, item.exact));
-	}, [menuItems, isActivePath]);
+	const collapse = useCallback(() => {
+		setCollapsed(true);
+	}, []);
 
-	// Obter título da página atual
-	const getCurrentPageTitle = useCallback(() => {
-		return currentMenuItem?.label || "Dashboard";
-	}, [currentMenuItem]);
-
-	// Obter breadcrumbs
-	const getBreadcrumbs = useCallback(() => {
-		const pathSegments = location.pathname.split("/").filter(Boolean);
-		return pathSegments.map((segment, index) => {
-			const path = "/" + pathSegments.slice(0, index + 1).join("/");
-			const menuItem = menuItems.find((item) => item.path === path);
-			return {
-				path,
-				label:
-					menuItem?.label || segment.charAt(0).toUpperCase() + segment.slice(1),
-				isLast: index === pathSegments.length - 1,
-			};
-		});
-	}, [location.pathname, menuItems]);
+	const expand = useCallback(() => {
+		setCollapsed(false);
+	}, []);
 
 	return {
-		isActivePath,
-		currentMenuItem,
-		getCurrentPageTitle,
-		getBreadcrumbs,
-		currentPath: location.pathname,
+		collapsed,
+		isMobile,
+		toggle,
+		collapse,
+		expand,
+		setCollapsed,
 	};
 };
+
+// Exemplo de uso:
+/*
+const MyComponent = () => {
+  const {
+    sidebarCollapsed,
+    sidebarOpen,
+    isMobile,
+    toggleSidebarCollapse,
+    toggleSidebarMobile,
+    closeSidebarMobile,
+    getSidebarClasses
+  } = useSidebar('my_sidebar_key');
+
+  return (
+    <div className="layout">
+      <aside className={getSidebarClasses('my-sidebar')}>
+        <button onClick={toggleSidebarCollapse}>
+          {sidebarCollapsed ? 'Expand' : 'Collapse'}
+        </button>
+        {isMobile && (
+          <button onClick={toggleSidebarMobile}>
+            Toggle Mobile
+          </button>
+        )}
+      </aside>
+      
+      {isMobile && sidebarOpen && (
+        <div 
+          className="overlay" 
+          onClick={closeSidebarMobile}
+        />
+      )}
+    </div>
+  );
+};
+*/

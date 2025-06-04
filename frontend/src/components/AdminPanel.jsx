@@ -12,7 +12,7 @@ import SystemLogs from "./admin/SystemLogs";
 
 // Hooks customizados
 import { useSidebar } from "../hooks/useSidebar";
-//import { useActiveRoute } from "../hooks/useActiveRoute";
+import { useActiveRoute } from "../hooks/useActiveRoute";
 import { useKeyboard } from "../hooks/useKeyboard";
 
 // Estilos - Reutilizando estilos do Dashboard conforme sugerido
