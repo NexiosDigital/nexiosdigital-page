@@ -173,26 +173,6 @@ const AdminPanel = () => {
 						<h2>Admin Panel</h2>
 						<span className="subtitle">Nexios Digital</span>
 					</div>
-
-					{/* Botão de toggle apenas no desktop */}
-					{!isMobile && (
-						<button
-							className="sidebar-toggle"
-							onClick={toggleSidebarCollapse}
-							title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
-							type="button"
-							aria-label={
-								sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"
-							}
-						>
-							<i
-								className={`fas fa-chevron-${
-									sidebarCollapsed ? "right" : "left"
-								}`}
-								aria-hidden="true"
-							></i>
-						</button>
-					)}
 				</div>
 
 				<nav
