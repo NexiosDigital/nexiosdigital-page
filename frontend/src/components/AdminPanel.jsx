@@ -13,6 +13,7 @@ import SystemLogs from "./admin/SystemLogs";
 // Hooks customizados
 import { useSidebar } from "../hooks/useSidebar";
 import { useActiveRoute } from "../hooks/useActiveRoute";
+import { useOptimizedSidebar } from "../hooks/useSidebar";
 import { useKeyboard } from "../hooks/useKeyboard";
 
 // Estilos - Reutilizando estilos do Dashboard conforme sugerido
@@ -25,14 +26,15 @@ const AdminPanel = () => {
 
 	// Hook customizado para sidebar com funcionalidades otimizadas
 	const {
-		sidebarOpen,
 		sidebarCollapsed,
+		sidebarOpen,
 		isMobile,
 		toggleSidebarCollapse,
 		toggleSidebarMobile,
 		closeSidebarMobile,
 		getSidebarClasses,
-	} = useSidebar("admin_sidebar_collapsed");
+		getTooltipProps, // NOVO
+	} = useOptimizedSidebar("admin_sidebar_collapsed");
 
 	// Estado de carregamento
 	const [isLoading, setIsLoading] = useState(false);
@@ -127,6 +129,7 @@ const AdminPanel = () => {
 						className={linkClass}
 						title={tooltip}
 						aria-label={item.label}
+						{...getTooltipProps(item.path, item.label)}
 					>
 						<i className={item.icon} aria-hidden="true"></i>
 						<span>{item.label}</span>

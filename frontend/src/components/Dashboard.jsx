@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -9,6 +9,9 @@ import Reports from "./dashboard/Reports";
 import Settings from "./dashboard/Settings";
 import Support from "./dashboard/Support";
 
+// Hook otimizado para sidebar
+import { useOptimizedSidebar } from "../hooks/useSidebar";
+
 // Estilos
 import "../styles/Dashboard.css";
 
@@ -16,16 +19,18 @@ const Dashboard = () => {
 	const { user, logout } = useAuth();
 	const location = useLocation();
 
-	// Estados para controle da sidebar
-	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-		try {
-			return localStorage.getItem("dashboard_sidebar_collapsed") === "true";
-		} catch {
-			return false;
-		}
-	});
-	const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+	// Estados para controle da sidebar - HOOK OTIMIZADO
+	const {
+		sidebarOpen,
+		sidebarCollapsed,
+		isMobile,
+		toggleSidebarCollapse,
+		toggleSidebarMobile,
+		closeSidebarMobile,
+		getSidebarClasses,
+		getTooltipProps,
+	} = useOptimizedSidebar("dashboard_sidebar_collapsed");
+
 	const [isLoading, setIsLoading] = useState(false);
 
 	// Menu items baseado no papel do usuário - memoizado para performance
@@ -93,118 +98,7 @@ const Dashboard = () => {
 		return currentItem?.label || "Dashboard";
 	}, [menuItems, location.pathname]);
 
-	// Detectar se é mobile e gerenciar resize
-	useEffect(() => {
-		const checkMobile = () => {
-			const mobile = window.innerWidth < 1024;
-			setIsMobile(mobile);
-
-			// Se mudou de mobile para desktop, resetar estados
-			if (!mobile && sidebarOpen) {
-				setSidebarOpen(false);
-			}
-		};
-
-		// Função debounced para otimizar performance
-		let timeoutId;
-		const debouncedResize = () => {
-			clearTimeout(timeoutId);
-			timeoutId = setTimeout(checkMobile, 150);
-		};
-
-		window.addEventListener("resize", debouncedResize);
-
-		return () => {
-			window.removeEventListener("resize", debouncedResize);
-			clearTimeout(timeoutId);
-		};
-	}, [sidebarOpen]);
-
-	// Fechar sidebar mobile ao mudar de rota
-	useEffect(() => {
-		if (isMobile) {
-			setSidebarOpen(false);
-		}
-	}, [location.pathname, isMobile]);
-
-	// Fechar sidebar mobile ao clicar fora (só em mobile)
-	useEffect(() => {
-		if (!isMobile) return;
-
-		const handleClickOutside = (event) => {
-			// Verificar se clicou fora da sidebar e não foi no botão de menu
-			if (
-				sidebarOpen &&
-				!event.target.closest(".dashboard-sidebar") &&
-				!event.target.closest(".mobile-menu-toggle")
-			) {
-				setSidebarOpen(false);
-			}
-		};
-
-		document.addEventListener("mousedown", handleClickOutside);
-		document.addEventListener("touchstart", handleClickOutside);
-
-		return () => {
-			document.removeEventListener("mousedown", handleClickOutside);
-			document.removeEventListener("touchstart", handleClickOutside);
-		};
-	}, [sidebarOpen, isMobile]);
-
-	// Atalhos de teclado
-	useEffect(() => {
-		const handleKeyDown = (event) => {
-			// Ignorar se estiver em um input/textarea
-			if (
-				event.target.tagName === "INPUT" ||
-				event.target.tagName === "TEXTAREA"
-			) {
-				return;
-			}
-
-			// Ctrl/Cmd + B para colapsar sidebar
-			if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "b") {
-				event.preventDefault();
-				if (!isMobile) {
-					toggleSidebarCollapse();
-				}
-			}
-
-			// ESC para fechar sidebar mobile
-			if (event.key === "Escape" && isMobile && sidebarOpen) {
-				setSidebarOpen(false);
-			}
-		};
-
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [isMobile, sidebarOpen]);
-
-	// Função para alternar sidebar colapsada (apenas desktop)
-	const toggleSidebarCollapse = useCallback(() => {
-		if (isMobile) return;
-
-		const newCollapsed = !sidebarCollapsed;
-		setSidebarCollapsed(newCollapsed);
-
-		// Salvar preferência no localStorage
-		try {
-			localStorage.setItem(
-				"dashboard_sidebar_collapsed",
-				newCollapsed.toString()
-			);
-		} catch (error) {
-			console.warn("Erro ao salvar preferências da sidebar:", error);
-		}
-	}, [sidebarCollapsed, isMobile]);
-
-	// Função para alternar sidebar mobile
-	const toggleSidebarMobile = useCallback(() => {
-		if (!isMobile) return;
-		setSidebarOpen((prev) => !prev);
-	}, [isMobile]);
-
-	// Função de logout otimizada
+	// Função de logout otimizada - MANTIDA
 	const handleLogout = useCallback(async () => {
 		if (isLoading) return;
 
@@ -220,26 +114,7 @@ const Dashboard = () => {
 		}
 	}, [logout, isLoading]);
 
-	// Classes CSS para a sidebar
-	const sidebarClasses = useMemo(() => {
-		const classes = ["dashboard-sidebar"];
-
-		if (sidebarCollapsed && !isMobile) {
-			classes.push("collapsed");
-		}
-
-		if (isMobile) {
-			if (sidebarOpen) {
-				classes.push("open");
-			} else {
-				classes.push("mobile-hidden");
-			}
-		}
-
-		return classes.join(" ");
-	}, [sidebarCollapsed, isMobile, sidebarOpen]);
-
-	// Renderizar link de navegação
+	// Renderizar link de navegação - ATUALIZADO com tooltips
 	const renderNavLink = useCallback(
 		(item) => {
 			const isActive = isActivePath(item.path, item.exact);
@@ -254,6 +129,7 @@ const Dashboard = () => {
 						className={linkClass}
 						title={tooltip}
 						aria-label={item.label}
+						{...getTooltipProps(item.path, item.label)}
 					>
 						<i className={item.icon} aria-hidden="true"></i>
 						<span>{item.label}</span>
@@ -268,33 +144,20 @@ const Dashboard = () => {
 					className={linkClass}
 					title={tooltip}
 					aria-label={item.label}
+					{...getTooltipProps(item.path, item.label)}
 				>
 					<i className={item.icon} aria-hidden="true"></i>
 					<span>{item.label}</span>
 				</Link>
 			);
 		},
-		[isActivePath, sidebarCollapsed, isMobile]
+		[isActivePath, sidebarCollapsed, isMobile, getTooltipProps]
 	);
-
-	// Prevenir scroll quando sidebar mobile está aberta
-	useEffect(() => {
-		if (isMobile && sidebarOpen) {
-			document.body.style.overflow = "hidden";
-		} else {
-			document.body.style.overflow = "auto";
-		}
-
-		// Cleanup function
-		return () => {
-			document.body.style.overflow = "auto";
-		};
-	}, [isMobile, sidebarOpen]);
 
 	return (
 		<div className="dashboard-layout">
-			{/* Sidebar */}
-			<aside className={sidebarClasses}>
+			{/* Sidebar - ATUALIZADA com hook otimizado */}
+			<aside className={getSidebarClasses("dashboard-sidebar")}>
 				<div className="sidebar-header">
 					<div className="logo">
 						<h2>Nexios Digital</h2>
@@ -359,6 +222,7 @@ const Dashboard = () => {
 						title="Fazer logout"
 						type="button"
 						aria-label="Fazer logout"
+						{...getTooltipProps("logout", "Sair")}
 					>
 						<i
 							className={`fas fa-${
@@ -441,7 +305,7 @@ const Dashboard = () => {
 			{isMobile && (
 				<div
 					className={`sidebar-overlay ${sidebarOpen ? "show" : ""}`}
-					onClick={() => setSidebarOpen(false)}
+					onClick={closeSidebarMobile}
 					aria-hidden="true"
 				></div>
 			)}
