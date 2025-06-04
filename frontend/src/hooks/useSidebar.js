@@ -33,13 +33,8 @@ export const useOptimizedSidebar = (
 	const isMobile = useMediaQuery(`(max-width: ${breakpoint - 1}px)`);
 	const isDesktop = useMediaQuery(`(min-width: ${breakpoint}px)`);
 
-	// Memoized tooltip delay
-	const tooltipTimer = useMemo(
-		() => ({
-			current: null,
-		}),
-		[]
-	);
+	// Ref para timeout de tooltip
+	const tooltipTimeoutRef = useMemo(() => ({ current: null }), []);
 
 	// Toggle sidebar colapsada (apenas desktop)
 	const toggleSidebarCollapse = useCallback(() => {
@@ -80,11 +75,11 @@ export const useOptimizedSidebar = (
 		(id) => {
 			if (!enableTooltips || !sidebarCollapsed || isMobile) return;
 
-			if (tooltipTimer.current) {
-				clearTimeout(tooltipTimer.current);
+			if (tooltipTimeoutRef.current) {
+				clearTimeout(tooltipTimeoutRef.current);
 			}
 
-			tooltipTimer.current = setTimeout(() => {
+			tooltipTimeoutRef.current = setTimeout(() => {
 				setTooltipVisible(id);
 			}, tooltipDelay);
 		},
@@ -92,8 +87,8 @@ export const useOptimizedSidebar = (
 	);
 
 	const hideTooltip = useCallback(() => {
-		if (tooltipTimer.current) {
-			clearTimeout(tooltipTimer.current);
+		if (tooltipTimeoutRef.current) {
+			clearTimeout(tooltipTimeoutRef.current);
 		}
 		setTooltipVisible(null);
 	}, []);
@@ -118,6 +113,8 @@ export const useOptimizedSidebar = (
 				classes.push("desktop");
 				if (sidebarCollapsed) {
 					classes.push("collapsed");
+				} else {
+					classes.push("expanded");
 				}
 			}
 
@@ -187,23 +184,25 @@ export const useOptimizedSidebar = (
 
 	// Gerenciar scroll do body quando sidebar mobile está aberta
 	useEffect(() => {
-		if (isMobile && sidebarOpen) {
-			document.body.style.overflow = "hidden";
-		} else {
-			document.body.style.overflow = "auto";
-		}
+		if (typeof document !== "undefined") {
+			if (isMobile && sidebarOpen) {
+				document.body.style.overflow = "hidden";
+			} else {
+				document.body.style.overflow = "auto";
+			}
 
-		// Cleanup
-		return () => {
-			document.body.style.overflow = "auto";
-		};
+			// Cleanup
+			return () => {
+				document.body.style.overflow = "auto";
+			};
+		}
 	}, [isMobile, sidebarOpen]);
 
 	// Cleanup tooltips ao desmontar
 	useEffect(() => {
 		return () => {
-			if (tooltipTimer.current) {
-				clearTimeout(tooltipTimer.current);
+			if (tooltipTimeoutRef.current) {
+				clearTimeout(tooltipTimeoutRef.current);
 			}
 		};
 	}, []);
@@ -240,8 +239,10 @@ export const useOptimizedSidebar = (
 			}
 		};
 
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
+		if (typeof document !== "undefined") {
+			document.addEventListener("keydown", handleKeyDown);
+			return () => document.removeEventListener("keydown", handleKeyDown);
+		}
 	}, [
 		isMobile,
 		sidebarOpen,
@@ -338,15 +339,143 @@ export const useOptimizedSidebar = (
 };
 
 /**
+ * Hook simplificado para sidebar básica
+ * @param {string} storageKey - Chave para localStorage
+ * @param {boolean} defaultCollapsed - Estado inicial colapsado
+ * @param {Object} options - Opções de configuração
+ * @returns {Object} - Estados e funções básicas
+ */
+export const useSidebar = (
+	storageKey = "sidebar_collapsed",
+	defaultCollapsed = false,
+	options = {}
+) => {
+	const [collapsed, setCollapsed] = useLocalStorage(
+		storageKey,
+		defaultCollapsed
+	);
+	const [isOpen, setIsOpen] = useState(false);
+	const [isAnimating, setIsAnimating] = useState(false);
+	const isMobile = useMediaQuery("(max-width: 1023px)");
+
+	const { animationDuration = 400 } = options;
+
+	const toggle = useCallback(() => {
+		if (!isMobile && !isAnimating) {
+			setIsAnimating(true);
+			setCollapsed((prev) => !prev);
+
+			setTimeout(() => {
+				setIsAnimating(false);
+			}, animationDuration);
+		}
+	}, [isMobile, isAnimating, setCollapsed, animationDuration]);
+
+	const toggleMobile = useCallback(() => {
+		if (isMobile) {
+			setIsOpen((prev) => !prev);
+		}
+	}, [isMobile]);
+
+	const closeMobile = useCallback(() => {
+		if (isMobile) {
+			setIsOpen(false);
+		}
+	}, [isMobile]);
+
+	const collapse = useCallback(() => {
+		if (!collapsed && !isAnimating && !isMobile) {
+			setIsAnimating(true);
+			setCollapsed(true);
+
+			setTimeout(() => {
+				setIsAnimating(false);
+			}, animationDuration);
+		}
+	}, [collapsed, isAnimating, isMobile, setCollapsed, animationDuration]);
+
+	const expand = useCallback(() => {
+		if (collapsed && !isAnimating && !isMobile) {
+			setIsAnimating(true);
+			setCollapsed(false);
+
+			setTimeout(() => {
+				setIsAnimating(false);
+			}, animationDuration);
+		}
+	}, [collapsed, isAnimating, isMobile, setCollapsed, animationDuration]);
+
+	// Auto-close mobile sidebar on desktop
+	useEffect(() => {
+		if (!isMobile && isOpen) {
+			setIsOpen(false);
+		}
+	}, [isMobile, isOpen]);
+
+	// Manage body scroll
+	useEffect(() => {
+		if (typeof document !== "undefined") {
+			if (isMobile && isOpen) {
+				document.body.style.overflow = "hidden";
+			} else {
+				document.body.style.overflow = "auto";
+			}
+
+			return () => {
+				document.body.style.overflow = "auto";
+			};
+		}
+	}, [isMobile, isOpen]);
+
+	const getClasses = useCallback(
+		(baseClass = "sidebar") => {
+			const classes = [baseClass];
+
+			if (isMobile) {
+				classes.push("mobile");
+				if (isOpen) classes.push("open");
+			} else {
+				classes.push("desktop");
+				if (collapsed) classes.push("collapsed");
+			}
+
+			if (isAnimating) classes.push("animating");
+
+			return classes.join(" ");
+		},
+		[isMobile, isOpen, collapsed, isAnimating]
+	);
+
+	return {
+		// Estados
+		collapsed,
+		isOpen,
+		isMobile,
+		isAnimating,
+
+		// Ações
+		toggle,
+		toggleMobile,
+		closeMobile,
+		collapse,
+		expand,
+		setCollapsed,
+		setIsOpen,
+
+		// Helpers
+		getClasses,
+		isExpanded: isMobile ? isOpen : !collapsed,
+		width: isMobile ? (isOpen ? 280 : 0) : collapsed ? 80 : 280,
+	};
+};
+
+/**
  * Hook simplificado para sidebar básica otimizada
  * @param {boolean} defaultCollapsed - Estado inicial colapsado
  * @param {Object} options - Opções de configuração
  * @returns {Object} - Estados e funções básicas
  */
-export const useSimpleOptimizedSidebar = (
-	defaultCollapsed = false,
-	options = {}
-) => {
+export const useSimpleSidebar = (defaultCollapsed = false, options = {}) => {
 	const [collapsed, setCollapsed] = useState(defaultCollapsed);
 	const [isAnimating, setIsAnimating] = useState(false);
 	const isMobile = useMediaQuery("(max-width: 768px)");

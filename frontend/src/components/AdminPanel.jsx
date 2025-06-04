@@ -10,13 +10,11 @@ import InvitesManagement from "./admin/InvitesManagement";
 import SystemSettings from "./admin/SystemSettings";
 import SystemLogs from "./admin/SystemLogs";
 
-// Hooks customizados
-import { useSidebar } from "../hooks/useSidebar";
-import { useActiveRoute } from "../hooks/useActiveRoute";
+// Hook otimizado para sidebar
 import { useOptimizedSidebar } from "../hooks/useSidebar";
 import { useKeyboard } from "../hooks/useKeyboard";
 
-// Estilos - Reutilizando estilos do Dashboard conforme sugerido
+// Estilos
 import "../styles/Dashboard.css";
 import "../styles/AdminPanel.css";
 
@@ -33,7 +31,7 @@ const AdminPanel = () => {
 		toggleSidebarMobile,
 		closeSidebarMobile,
 		getSidebarClasses,
-		getTooltipProps, // NOVO
+		getTooltipProps,
 	} = useOptimizedSidebar("admin_sidebar_collapsed");
 
 	// Estado de carregamento
@@ -83,8 +81,26 @@ const AdminPanel = () => {
 		[]
 	);
 
-	// Hook para rotas ativas
-	const { isActivePath, getCurrentPageTitle } = useActiveRoute(menuItems);
+	// Função para verificar se um path está ativo
+	const isActivePath = useCallback(
+		(path, exact = false) => {
+			if (exact) {
+				return location.pathname === path;
+			}
+			return location.pathname.startsWith(path);
+		},
+		[location.pathname]
+	);
+
+	// Obter título da página atual
+	const getCurrentPageTitle = useCallback(() => {
+		const currentItem = menuItems.find((item) =>
+			item.exact
+				? location.pathname === item.path
+				: location.pathname.startsWith(item.path)
+		);
+		return currentItem?.label || "Painel Administrativo";
+	}, [menuItems, location.pathname]);
 
 	// Atalhos de teclado
 	useKeyboard(
@@ -110,26 +126,21 @@ const AdminPanel = () => {
 		}
 	}, [logout, isLoading]);
 
-	// Classes CSS dinâmicas - Reutilizando classes do Dashboard
-	const sidebarClasses = useMemo(() => {
-		return getSidebarClasses("admin-sidebar dashboard-sidebar");
-	}, [getSidebarClasses]);
-
 	// Renderizar link de navegação - memoizado para performance
 	const renderNavLink = useCallback(
 		(item) => {
 			const isActive = isActivePath(item.path, item.exact);
 			const linkClass = `nav-link ${isActive ? "active" : ""}`;
-			const tooltip = sidebarCollapsed && !isMobile ? item.label : "";
+			const tooltipProps = getTooltipProps(item.path, item.label);
 
 			if (item.external) {
 				return (
 					<a
 						href={item.path}
 						className={linkClass}
-						title={tooltip}
+						title={sidebarCollapsed && !isMobile ? item.label : ""}
 						aria-label={item.label}
-						{...getTooltipProps(item.path, item.label)}
+						{...tooltipProps}
 					>
 						<i className={item.icon} aria-hidden="true"></i>
 						<span>{item.label}</span>
@@ -141,21 +152,22 @@ const AdminPanel = () => {
 				<Link
 					to={item.path}
 					className={linkClass}
-					title={tooltip}
+					title={sidebarCollapsed && !isMobile ? item.label : ""}
 					aria-label={item.label}
+					{...tooltipProps}
 				>
 					<i className={item.icon} aria-hidden="true"></i>
 					<span>{item.label}</span>
 				</Link>
 			);
 		},
-		[isActivePath, sidebarCollapsed, isMobile]
+		[isActivePath, sidebarCollapsed, isMobile, getTooltipProps]
 	);
 
 	return (
 		<div className="dashboard-layout admin-layout">
-			{/* Sidebar - Reutilizando estrutura do Dashboard */}
-			<aside className={sidebarClasses}>
+			{/* Sidebar */}
+			<aside className={getSidebarClasses("dashboard-sidebar admin-sidebar")}>
 				<div className="sidebar-header">
 					<div className="logo">
 						<h2>Admin Panel</h2>
@@ -221,6 +233,7 @@ const AdminPanel = () => {
 						title="Fazer logout"
 						type="button"
 						aria-label="Fazer logout"
+						{...getTooltipProps("logout", "Sair")}
 					>
 						<i
 							className={`fas fa-${
@@ -233,10 +246,10 @@ const AdminPanel = () => {
 				</div>
 			</aside>
 
-			{/* Main Content - Reutilizando estrutura do Dashboard */}
-			<main className="admin-main dashboard-main">
+			{/* Main Content */}
+			<main className="dashboard-main admin-main">
 				{/* Header */}
-				<header className="admin-header dashboard-header">
+				<header className="dashboard-header admin-header">
 					<div className="header-left">
 						{/* Botão de menu mobile */}
 						{isMobile && (
@@ -264,7 +277,7 @@ const AdminPanel = () => {
 				</header>
 
 				{/* Content Area */}
-				<div className="admin-content dashboard-content" role="main">
+				<div className="dashboard-content admin-content" role="main">
 					<Routes>
 						<Route index element={<AdminOverview />} />
 						<Route path="clients" element={<ClientsManagement />} />
