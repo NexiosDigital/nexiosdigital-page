@@ -81,7 +81,7 @@ cp .env.example .env
 3. Variáveis de ambiente importantes:
 ```
 # Nome do projeto
-COMPOSE_PROJECT_NAME=nexiosdigital
+COMPOSE_PROJECT_NAME=nexios-digital
 
 # Domínio
 DOMAIN_NAME=nexiosdigital.com
